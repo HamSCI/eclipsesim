@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import sys
+import os
+import datetime
+
+sDate       = datetime.datetime(2017,8,21,16)
+
+job_name    = os.path.split(sys.argv[1])[-1]
+job_time    = datetime.datetime.strptime(job_name,'%Y-%m-%d %H:%M:%S.csv')
+
+diff_min    = (job_time - sDate).total_seconds()/60.
+job_id      = int(diff_min/3.)
+print(job_id)
