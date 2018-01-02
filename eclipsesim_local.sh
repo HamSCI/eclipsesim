@@ -26,4 +26,5 @@ OUT_PATH="./traces/"
 PLOT_PATH="./plots/"
 
 # Run the program
-matlab -nodisplay -r "eclipse(45, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
+matlab -nodisplay -r "dbstop in eclipse at 92; eclipse(${jobs[0]}, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
+#matlab -nodisplay -r "eclipse(${jobs[0]}, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
