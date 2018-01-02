@@ -1,6 +1,7 @@
 pharlap_4.1.3
 eclipse2017_ionopath
 
-jobs/*.csv
-plots/*.png
-traces/*.csv
+jobs/*
+plots/*
+traces/*
+sami3/

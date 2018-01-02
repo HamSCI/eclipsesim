@@ -1,4 +1,4 @@
-function plot_raytrace(tx_lat, tx_lon, ray_bearing, start_height, height_inc, iono_pf_grid, ray_path_data, UT)
+function plot_raytrace(tx_lat, tx_lon, ray_bearing, start_height, height_inc, iono_pf_grid, ray_path_data, srch_ray_path_data, UT)
 %%----------------------------
 %%  Copyright (C) 2017 The Center for Solar-Terrestrial Research at
 %%                     the New Jersey Institute of Technology
@@ -36,7 +36,7 @@ function plot_raytrace(tx_lat, tx_lon, ray_bearing, start_height, height_inc, io
                '   lat = ' lat_str ', lon = ' lon_str ', bearing = ' ...
                bearing_str];
     start_range = 0;
-    end_range = 2000;
+    end_range = 2500;
     end_range_idx = fix(end_range ./ RANGE_INC) + 1;
     start_ht = start_height;
     start_ht_idx = 1;
@@ -47,11 +47,11 @@ function plot_raytrace(tx_lat, tx_lon, ray_bearing, start_height, height_inc, io
     
     iono_pf_subgrid = iono_pf_grid(start_ht_idx:end_ht_idx, ...
                                    1:end_range_idx);
+    
     [axis_handle, ray_handle] = ...
-        plot_ray_iono_slice(iono_pf_subgrid, start_range, end_range, ...
+        plot_ray_iono_slice_custom(iono_pf_subgrid, start_range, end_range, ...
                             RANGE_INC, start_ht, end_ht, height_inc, ...
-                            ray_path_data, 'color', [1, 1, 0.99], ...
-                            'linewidth', 2);
+                            ray_path_data, srch_ray_path_data);
 
     caxis([0, 7.25]);
     

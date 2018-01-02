@@ -4,7 +4,7 @@
 #$ -cwd
 #$ -j y
 #$ -S /bin/bash
-#$ -t 1-160
+#$ -t 1-121
 
 # Load modules
 module load matlab/2016a        # Load MATLAB 2016a
@@ -29,9 +29,12 @@ i=$(expr $SGE_TASK_ID - 1)
 # Environment variables
 PLOTS=0
 ECLIPSE=0
-SAMI3_PATH="./sami3/"
-OUT_PATH="./traces/"
-PLOT_PATH="./plots/"
 
-# Run the program
-matlab -nodisplay -r "eclipse('${jobs[${i}]}', ${i}, ${PLOTS}, ${ECLIPSE}, '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
+# Directories
+JOB_PATH="./jobs/"
+SAMI3_PATH="/afs/cad.njit.edu/research/physics/frissell/1/wb2jsv/sami3_mat/"
+OUT_PATH="/afs/cad.njit.edu/research/physics/frissell/1/wb2jsv/eclipsesim_dcc_output/traces/"
+PLOT_PATH="/afs/cad.njit.edu/research/physics/frissell/1/wb2jsv/eclipsesim_dcc_output/plots/"
+
+# Run the program (only execute at 15 minute intervals)
+matlab -nodisplay -r "eclipse(${i}, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"

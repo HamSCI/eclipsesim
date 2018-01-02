@@ -17,8 +17,6 @@ function [iono_en_grid] = create_2d_slice(interpolator, params)
 %%  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 %%----------------------------
 
-    params
-
     tx_lat = params(1);
     tx_lon = params(2);
     rx_lat = params(3);
