@@ -57,6 +57,17 @@ function eclipse(job_id, make_plot, use_eclipse, ...
     HEIGHT_INC      = 3;
     NUM_HEIGHTS     = 200;
     START_TIMESTAMP = datenum('21-Aug-2017 16:00:00');
+    
+    if use_eclipse == 0
+        ecl_str     = 'base';
+        ecl_title   = 'Base';
+    else
+        ecl_str     = 'eclipse';
+        ecl_title   = 'Eclipse';
+    end
+    
+    PLT_PATH = strcat(plot_path,ecl_str,'/');
+
 
     % Get the timestamp of the current moment.
     timestamp = addtodate(START_TIMESTAMP, (job_id * 3), 'minute');
@@ -196,6 +207,7 @@ function eclipse(job_id, make_plot, use_eclipse, ...
          srch_ray_path_data] = find_good_rays(srch_labels, srch_gnd_range, ...
                                               srch_grp_range, range, freq, ...
                                               tx_lat, tx_lon, azimuth, UT);
+
         if srch_ray_good ~= 0
             disp('Good ray found.');
             
@@ -227,10 +239,15 @@ function eclipse(job_id, make_plot, use_eclipse, ...
                                   ray_path_data, srch_ray_path_data, UT);
                     
                     % TODO: Sanitize the callsigns to make them filesystem friendly.
-                    
-                    print('-dpng', strcat(plot_path, timestamp_str, '-', ...
+                    disp(PLT_PATH)
+                    plot_fname = strcat(PLT_PATH, timestamp_str, '-', ...
                                           tx_call, '-', rx_call, '_', ...
-                                          num2str(freq), '.png'));
+                                          num2str(freq), '_',ecl_str, ...
+                                          '.png');
+                    plot_title = {strcat(ecl_title," ",timestamp_str); ... 
+                                  strcat("TX: ",tx_call, " Rx: ", rx_call," ", num2str(freq), " MHz")};
+                    suptitle(plot_title);
+                    print('-dpng', plot_fname);
                 end
             end
             
