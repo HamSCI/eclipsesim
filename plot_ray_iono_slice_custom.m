@@ -97,26 +97,27 @@ for idx=1:length(ray)
   end
 end
 
-if ~isempty(best_ray)
-  if (~isfield(best_ray, 'height')) | ...
-     (~isfield(best_ray, 'gndrng') & ~isfield(best_ray, 'ground_range'))
-    error('input best_ray is not correct type')
-    return
-  end
-end
-if isfield(best_ray, 'ground_range')
-  for best_rayId=1:length(best_ray)
-    best_ray(best_rayId).gndrng = best_ray(best_rayId).ground_range;
-  end
-end
+if isstruct(best_ray)
+    if ~isempty(best_ray)
+      if (~isfield(best_ray, 'height')) | ...
+         (~isfield(best_ray, 'gndrng') & ~isfield(best_ray, 'ground_range'))
+        error('input best_ray is not correct type')
+        return
+      end
+    end
+    if isfield(best_ray, 'ground_range')
+      for best_rayId=1:length(best_ray)
+        best_ray(best_rayId).gndrng = best_ray(best_rayId).ground_range;
+      end
+    end
 
-for idx=1:length(best_ray)
-  if length(best_ray(idx).height) ~= length(best_ray(idx).gndrng)
-    error('best_ray height and ground range vectors have diffent lengths')
-    return
-  end
-end
- 
+    for idx=1:length(best_ray)
+      if length(best_ray(idx).height) ~= length(best_ray(idx).gndrng)
+        error('best_ray height and ground range vectors have diffent lengths')
+        return
+      end
+    end
+end 
 
 %
 % set fontsizes according to OS type - Windows fonts are bigger than Mac or
@@ -369,37 +370,39 @@ for idx = 1:length(ray)
 end
 
 best_ray_handle = [];
-for idx = 1:length(best_ray)
-  
-  if ~isempty(best_ray(idx).gndrng)
-    
-    % resample best_ray at a finer step size
-    len = length(best_ray(idx).gndrng);
-    best_ray_gndrng = [best_ray(idx).gndrng(1) : 0.1 : best_ray(idx).gndrng(len)];
-    best_ray_height = interp1(best_ray(idx).gndrng, best_ray(idx).height, best_ray_gndrng, 'pchip');
+if isstruct(best_ray)
+    for idx = 1:length(best_ray)
 
-    % mask out the best_ray where it lies outside the ionosphere image
-    mask_idx = find(best_ray_gndrng < start_range  | best_ray_gndrng > end_range); 
-    best_ray_gndrng(mask_idx) = NaN;
-    mask_idx = find(best_ray_height < start_height | best_ray_height > end_height);
-    best_ray_height(mask_idx) = NaN;
+      if ~isempty(best_ray(idx).gndrng)
 
-    % determine the coodinates of the best_ray in the image and plot it
-    best_ray_r = best_ray_height + rad_earth;
-    best_ray_theta = (best_ray_gndrng - start_range - max_range/2) ./ rad_earth; 
-    best_ray_X = best_ray_r .* sin(best_ray_theta);
-    best_ray_Y = best_ray_r .* cos(best_ray_theta);
-    
-    % execute the plot command - catch and throw any exceptions 
-    try
-      h = plot(best_ray_X, best_ray_Y, 'color', 'r', 'linewidth', 5);
-      best_ray_handle = [best_ray_handle, h];
-    catch ME
-      error(ME.message)
+        % resample best_ray at a finer step size
+        len = length(best_ray(idx).gndrng);
+        best_ray_gndrng = [best_ray(idx).gndrng(1) : 0.1 : best_ray(idx).gndrng(len)];
+        best_ray_height = interp1(best_ray(idx).gndrng, best_ray(idx).height, best_ray_gndrng, 'pchip');
+
+        % mask out the best_ray where it lies outside the ionosphere image
+        mask_idx = find(best_ray_gndrng < start_range  | best_ray_gndrng > end_range); 
+        best_ray_gndrng(mask_idx) = NaN;
+        mask_idx = find(best_ray_height < start_height | best_ray_height > end_height);
+        best_ray_height(mask_idx) = NaN;
+
+        % determine the coodinates of the best_ray in the image and plot it
+        best_ray_r = best_ray_height + rad_earth;
+        best_ray_theta = (best_ray_gndrng - start_range - max_range/2) ./ rad_earth; 
+        best_ray_X = best_ray_r .* sin(best_ray_theta);
+        best_ray_Y = best_ray_r .* cos(best_ray_theta);
+
+        % execute the plot command - catch and throw any exceptions 
+        try
+          h = plot(best_ray_X, best_ray_Y, 'color', 'r', 'linewidth', 5);
+          best_ray_handle = [best_ray_handle, h];
+        catch ME
+          error(ME.message)
+        end
+
+      end
+
     end
-    
-  end
-  
 end
 
 hold off

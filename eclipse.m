@@ -67,6 +67,7 @@ function eclipse(job_id, make_plot, use_eclipse, ...
     end
     
     PLT_PATH = strcat(plot_path,ecl_str,'/');
+    OUT_PATH = strcat(out_path,ecl_str,'/');
 
 
     % Get the timestamp of the current moment.
@@ -99,8 +100,9 @@ function eclipse(job_id, make_plot, use_eclipse, ...
 
     timestamp_str = datestr(timestamp, 'yyyy-mm-dd HH:MM:SS');
 
-    job_file = fopen(strcat(job_path, timestamp_str, '.csv'), 'r');
-    out_file = fopen(strcat(out_path, 'simulated_', timestamp_str, '.csv'), 'w');
+    job_file        = fopen(strcat(job_path, timestamp_str, '.csv'), 'r');
+    out_file        = fopen(strcat(OUT_PATH, 'simulated_',ecl_str,'_', timestamp_str, '.csv'), 'w');
+    out_all_fname   = strcat(OUT_PATH, 'all_simulated_',ecl_str,'_', timestamp_str, '.csv');
 
     % Write header
     fprintf(out_file, ['tx_call,' ...
@@ -134,7 +136,7 @@ function eclipse(job_id, make_plot, use_eclipse, ...
                        'srch_rd_apogee_lat,' ...
                        'srch_rd_apogee_lon' ...
                        '\n']);
-
+                   
     % Read the header line of the job file.
     fgets(job_file);
 
@@ -178,6 +180,11 @@ function eclipse(job_id, make_plot, use_eclipse, ...
                         iono_en_grid_2d, collision_freq_2d, ...
                         START_HEIGHT, HEIGHT_INC, RANGE_INC, irreg);
         
+                    
+        write_ray_data(rx_call,rx_lat,rx_lon,...
+                        tx_call,tx_lat,tx_lon,...
+                        freq,ray_data,out_all_fname)
+                    
         % Attempt to identify rays that are hitting the receiver
         num_elevs = length(ELEVS);
 
@@ -207,49 +214,51 @@ function eclipse(job_id, make_plot, use_eclipse, ...
          srch_ray_path_data] = find_good_rays(srch_labels, srch_gnd_range, ...
                                               srch_grp_range, range, freq, ...
                                               tx_lat, tx_lon, azimuth, UT);
+        if make_plot ~= 0
+            plottable = 1;
 
-        if srch_ray_good ~= 0
-            disp('Good ray found.');
-            
-            if make_plot ~= 0
-                plottable = 1;
-                
-                for ray_idx = 1:length(ray_path_data)
-                    if isempty(ray_path_data(ray_idx).ground_range)
-                        continue
-                    end
-                    
-                    if isempty(ray_path_data(ray_idx).height)
-                        continue
-                    end
-                    
-                    if length(ray_path_data(ray_idx).ground_range) ~= ...
-                            length(unique(ray_path_data(ray_idx).ground_range))
-                        plottable = 0
-                    end
+            for ray_idx = 1:length(ray_path_data)
+                if isempty(ray_path_data(ray_idx).ground_range)
+                    continue
                 end
-                
-                %%
-                %% Plot Raytrace
-                %%
-                if plottable ~= 0
 
-                    plot_raytrace(tx_lat, tx_lon, azimuth, START_HEIGHT, ...
-                                  HEIGHT_INC, iono_pf_grid_2d, ...
-                                  ray_path_data, srch_ray_path_data, UT);
-                    
-                    % TODO: Sanitize the callsigns to make them filesystem friendly.
-                    disp(PLT_PATH)
-                    plot_fname = strcat(PLT_PATH, timestamp_str, '-', ...
-                                          tx_call, '-', rx_call, '_', ...
-                                          num2str(freq), '_',ecl_str, ...
-                                          '.png');
-                    plot_title = {strcat(ecl_title," ",timestamp_str); ... 
-                                  strcat("TX: ",tx_call, " Rx: ", rx_call," ", num2str(freq), " MHz")};
-                    suptitle(plot_title);
-                    print('-dpng', plot_fname);
+                if isempty(ray_path_data(ray_idx).height)
+                    continue
+                end
+
+                if length(ray_path_data(ray_idx).ground_range) ~= ...
+                        length(unique(ray_path_data(ray_idx).ground_range))
+                    plottable = 0
                 end
             end
+
+            %%
+            %% Plot Raytrace
+            %%
+            if plottable ~= 0
+                plot_raytrace(tx_lat, tx_lon, azimuth, START_HEIGHT, ...
+                              HEIGHT_INC, iono_pf_grid_2d, ...
+                              ray_path_data, srch_ray_path_data, UT);
+            else
+                plot_raytrace(tx_lat, tx_lon, azimuth, START_HEIGHT, ...
+                              HEIGHT_INC, iono_pf_grid_2d, ...
+                              ray_path_data, 0, UT);                
+            end
+            
+            % TODO: Sanitize the callsigns to make them filesystem friendly.
+            disp(PLT_PATH)
+            plot_fname = strcat(PLT_PATH, timestamp_str, '-', ...
+                                  tx_call, '-', rx_call, '_', ...
+                                  num2str(freq), '_',ecl_str, ...
+                                  '.png');
+            plot_title = {strcat(ecl_title," ",timestamp_str); ... 
+                          strcat("TX: ",tx_call, " Rx: ", rx_call," ", num2str(freq), " MHz")};
+            suptitle(plot_title);
+            print('-dpng', plot_fname);
+        end
+                                          
+        if srch_ray_good ~= 0
+            disp('Good ray found.');
             
             srch_rd_points = 0;
             srch_num_elevs = length(srch_ray_data);
@@ -297,9 +306,8 @@ function eclipse(job_id, make_plot, use_eclipse, ...
 
                 start_idx = end_idx + 1;
             end
-
+            
             % TODO: Power computations
-
             for i = 1:length(srch_rd_lat)
                 % Calculate apogee coordinates
                 [rng, azm] = latlon2raz(srch_rd_lat(i), srch_rd_lon(i), tx_lat, tx_lon);
