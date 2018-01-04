@@ -3,6 +3,7 @@ import os
 import datetime
 import glob
 from collections import OrderedDict
+import pickle
 
 import pandas as pd
 import numpy as np
@@ -11,7 +12,67 @@ import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 
+import mysql.connector
+
 import seqp
+import eclipse_calc
+
+class MySqlEclipse(object):
+    def __init__(self,user='hamsci',password='hamsci',host='localhost',database='seqp_analysis'):
+        db          = mysql.connector.connect(user=user, password=password,host=host, database=database)
+        crsr        = db.cursor()
+
+        qry         = '''
+                      CREATE TABLE IF NOT EXISTS eclipse_obscuration (
+                      lat DECIMAL(10,4),
+                      lon DECIMAL(10,4),
+                      height INT,
+                      datetime DATETIME,
+                      obscuration FLOAT
+                      );
+                      '''
+        crsr.execute(qry)
+        db.commit()
+
+        self.db     = db
+mysql_ecl = MySqlEclipse()
+
+def get_eclipse_obscuration(lat,lon,date,height=300e3):
+    user        = 'hamsci'
+    password    = 'hamsci'
+    host        = 'localhost'
+    database    = 'seqp_analysis'
+    db          = mysql.connector.connect(user=user,password=password,host=host,database=database)
+    
+    slat    = '{:.4F}'.format(lat)
+    slon    = '{:.4F}'.format(lon)
+    sheight = '{:.0F}'.format(height/1000.)
+    sdate   = date.strftime('%Y-%m-%d %H:%M:%S')
+
+    qry     = ('SELECT obscuration FROM eclipse_obscuration '
+               'WHERE lat={} AND lon={} and height={} and datetime="{}"'.format(slat,slon,sheight,sdate))
+    crsr    = db.cursor()
+    crsr.execute(qry)
+    result  = crsr.fetchone()
+    crsr.close()
+
+    if result is None:
+        ob          = float(eclipse_calc.calculate_obscuration(date,lat,lon,height))
+
+        add_ecl     = ("INSERT INTO eclipse_obscuration "
+                           "(lat,lon,height,datetime,obscuration)"
+                           "VALUES (%s, %s, %s, %s, %s)")
+
+        data_ecl    = (slat,slon,sheight,sdate,ob)
+
+        crsr        = db.cursor()
+        crsr.execute(add_ecl,data_ecl)
+        db.commit()
+        crsr.close()
+    else:
+        ob  = result[0]
+    db.close()
+    return ob
 
 def load_traces():
     trace_dirs  = {}
@@ -36,10 +97,10 @@ def load_traces():
     keys.append('datetime')
     keys.append('tx_call')
     keys.append('rx_call')
-    #keys.append('tx_lat')
-    #keys.append('tx_lon')
-    #keys.append('rx_lat')
-    #keys.append('rx_lon')
+    keys.append('tx_lat')
+    keys.append('tx_lon')
+    keys.append('rx_lat')
+    keys.append('rx_lon')
     keys.append('freq')
     keys.append('ionosphere')
     keys.append('rdall_lat')
@@ -85,6 +146,14 @@ def compute_ray_density(df):
             tf      = np.logical_and(df_freq.tx_call == tx_call, df_freq.rx_call == rx_call)
             df_pair = df_freq[tf]
 
+            # Get TX/RX lat/lons and azimuths
+            tx_lat  = df_pair['tx_lat'].iloc[0]
+            tx_lon  = df_pair['tx_lon'].iloc[0]
+            rx_lat  = df_pair['rx_lat'].iloc[0]
+            rx_lon  = df_pair['rx_lon'].iloc[0]
+
+            azm     = seqp.geopack.greatCircleAzm(tx_lat,tx_lon,rx_lat,rx_lon) % 360.
+
             # Identify unique times
             dates   = [x.to_pydatetime() for x in df_pair['datetime']]
             dates   = list(set(dates))
@@ -103,14 +172,30 @@ def compute_ray_density(df):
                     hist,bin_edges  = np.histogram(vals,bins=bins,weights=weights)
 
                     for hist_val,bin_edge in zip(hist,bin_edges[:-1]):
+                        result              = seqp.geopack.greatCircleMove(
+                                                tx_lat,tx_lon,bin_edge/2.,azm)
+                        mid_lat             = float(result[0])
+                        mid_lon             = float(result[1])
+                        
+#                        mid_obsc_300km      = float(eclipse_calc.calculate_obscuration(
+#                                                date,mid_lat,mid_lon,height=300e3))
+
+                        mid_obsc_300km      = get_eclipse_obscuration(mid_lat,mid_lon,date,height=300e3)
+
                         dct = OrderedDict()
-                        dct['tx_call']      = tx_call
-                        dct['rx_call']      = rx_call
-                        dct['datetime']     = date
-                        dct['freq']         = freq
-                        dct['ionosphere']   = ionosphere
-                        dct['range_km']     = bin_edge
-                        dct['hist']         = hist_val
+                        dct['tx_call']      	= tx_call
+                        dct['rx_call']      	= rx_call
+                        dct['tx_lat']       	= tx_lat
+                        dct['tx_lon']       	= tx_lon
+                        dct['azm']          	= azm
+                        dct['datetime']     	= date
+                        dct['freq']         	= freq
+                        dct['ionosphere']   	= ionosphere
+                        dct['range_km']     	= bin_edge
+                        dct['hist']         	= hist_val
+                        dct['mid_lat']      	= mid_lat
+                        dct['mid_lon']      	= mid_lon
+                        dct['mid_obsc_300km']   = mid_obsc_300km
                         pwr_df_list.append(dct)
 
     df_pwr  = pd.DataFrame(pwr_df_list)
@@ -179,7 +264,17 @@ def plot_power_histograms(df_pwr):
                 plt.close(fig)
 
 if __name__ == '__main__':
-    df      = load_traces()
-    df_pwr  = compute_ray_density(df)
+    use_cache   = False
+
+    cache_file  = 'df_pwr.p'
+    if not use_cache:
+        df      = load_traces()
+        df_pwr  = compute_ray_density(df)
+        with open(cache_file,'wb') as fl:
+            pickle.dump(df_pwr,fl)
+    else:
+        with open(cache_file,'rb') as fl:
+            df_pwr  = pickle.dump(fl)
+
     plot_power_histograms(df_pwr)
     import ipdb; ipdb.set_trace()
