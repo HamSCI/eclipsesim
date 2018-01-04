@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os
 import datetime
+import pandas as pd
+import numpy as np
 import multiprocessing as mp
 
 JOB_PATH    = "./jobs/"
@@ -21,7 +23,11 @@ def job_to_jobid(job_fpath):
     return job_id
 
 def create_job_files():
-    files   = []
+    src_files   = []
+    src_files.append(( 7.030,'naf_files/7_rxTxPairs.csv'))
+    src_files.append((14.030,'naf_files/14_rxTxPairs.csv'))
+
+    files       = []
 
     sDate   = datetime.datetime(2017,8,21,16)
     eDate   = datetime.datetime(2017,8,21,22)
@@ -36,15 +42,30 @@ def create_job_files():
     while this_date < eDate:
         fname   = this_date.strftime('%Y-%m-%d %H:%M:%S.csv')
         fpath   = os.path.join(JOB_PATH,fname)
-
         with open(fpath,'w') as fl:
             line    = 'RX_CALL,TX_CALL,MHZ,RX_LAT,RX_LON,TX_LAT,TX_LON'
-            fl.write(line+'\n')
-            line    = 'WE9V,AA2MF,14.030,42.5625,-88.0417,27.8125,-82.7917'
             fl.write(line)
 
-        files.append(fpath)
-        this_date   += dt
+        for freq,src in src_files:
+            src_df      = pd.read_csv(src)
+            for rinx,row in src_df.iterrows():
+                rx_call = row['call_0']
+                rx_lat  = row['lat_0']
+                rx_lon  = row['lon_0']
+
+                tx_call = row['call_1']
+                tx_lat  = row['lat_1']
+                tx_lon  = row['lon_1']
+
+                with open(fpath,'a') as fl:
+                    fl.write('\n')
+                    #line   = 'WE9V,AA2MF,14.030,42.5625,-88.0417,27.8125,-82.7917'
+                    line    = ','.join([rx_call,tx_call,str(freq),
+                                str(rx_lat),str(rx_lon),str(tx_lat),str(tx_lon)])
+                    fl.write(line)
+
+                files.append(fpath)
+                this_date   += dt
 
     return files
 
