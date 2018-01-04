@@ -12,11 +12,229 @@ import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
 from matplotlib import pyplot as plt
+import matplotlib.gridspec as gridspec
 
 import mysql.connector
 
 import seqp
 import eclipse_calc
+
+import seaborn as sns
+
+bandObj     = seqp.maps.BandData()
+rcp = mpl.rcParams
+rcp['figure.titlesize']     = 'xx-large'
+rcp['axes.titlesize']       = 'xx-large'
+rcp['axes.labelsize']       = 'xx-large'
+rcp['xtick.labelsize']      = 'xx-large'
+rcp['ytick.labelsize']      = 'xx-large'
+rcp['legend.fontsize']      = 'large'
+
+rcp['figure.titleweight']   = 'bold'
+rcp['axes.titleweight']     = 'bold'
+rcp['axes.labelweight']     = 'bold'
+
+Re  = 6371.
+hgt = 300.
+
+# Parameter Dictionary
+prmd = {}
+
+tmp = {}
+tmp['label']            = 'Midpoint Obscuration at 300 km Altitude'
+tmp['lim']              = (0,1.05)
+prmd['obs_mid_300km']   = tmp
+
+tmp = {}
+tmp['label']            = 'Mean Great Circle Hop Length [km]'
+tmp['lim']              = (0.,4500.)
+prmd['R_gc_mean']       = tmp
+
+tmp = {}
+tmp['label']            = 'Great Circle Distance [km]'
+#tmp['lim']              = (0.,17500.)
+tmp['lim']              = (0.,8000.)
+#tmp['lim']              = (0.,5000.)
+tmp['vmin']             = 0.
+tmp['vmax']             = 10000.
+prmd['R_gc']       = tmp
+
+tmp = {}
+tmp['label']            = 'Frequency [MHz]'
+tmp['vmin']             = 0.
+tmp['vmax']             = 30.
+tmp['cmap']             = mpl.cm.jet
+prmd['frequency']       = tmp
+
+tmp = {}
+tmp['label']            = 'SNR [dB]'
+tmp['lim']              = (0.,100.)
+tmp['vmin']             = 0.
+tmp['vmax']             = 50.
+tmp['cmap']             = mpl.cm.viridis
+prmd['srpt_0']          = tmp
+
+#tmp = {}
+#tmp['label']            = 'Weighted Ray Denisty'
+#tmp['lim']              = (0.,6e-9)
+#tmp['vmin']             = 0.
+#tmp['vmax']             = 4e-9
+#tmp['cmap']             = mpl.cm.viridis
+#prmd['hist']          = tmp
+
+tmp = {}
+tmp['label']            = 'Weighted Ray Denisty'
+tmp['lim']              = (-250,0)
+tmp['vmin']             = -150
+tmp['vmax']             = -50
+tmp['cmap']             = mpl.cm.viridis
+prmd['hist']         = tmp
+
+tmp = {}
+tmp['label']            = 'N Hops'
+tmp['vmin']             = 0.
+tmp['vmax']             = 5.
+tmp['cmap']             = mpl.cm.jet
+prmd['N_hops']          = tmp
+
+class SeabornFig2Grid():
+    """From https://stackoverflow.com/questions/35042255/how-to-plot-multiple-seaborn-jointplot-in-subplot"""
+    def __init__(self, seaborngrid, fig,  subplot_spec):
+        self.fig = fig
+        self.sg = seaborngrid
+        self.subplot = subplot_spec
+        if isinstance(self.sg, sns.axisgrid.FacetGrid) or \
+            isinstance(self.sg, sns.axisgrid.PairGrid):
+            self._movegrid()
+        elif isinstance(self.sg, sns.axisgrid.JointGrid):
+            self._movejointgrid()
+        self._finalize()
+
+    def _movegrid(self):
+        """ Move PairGrid or Facetgrid """
+        self._resize()
+        n = self.sg.axes.shape[0]
+        m = self.sg.axes.shape[1]
+        self.subgrid = gridspec.GridSpecFromSubplotSpec(n,m, subplot_spec=self.subplot)
+        for i in range(n):
+            for j in range(m):
+                self._moveaxes(self.sg.axes[i,j], self.subgrid[i,j])
+
+    def _movejointgrid(self):
+        """ Move Jointgrid """
+        h= self.sg.ax_joint.get_position().height
+        h2= self.sg.ax_marg_x.get_position().height
+        r = int(np.round(h/h2))
+        self._resize()
+        self.subgrid = gridspec.GridSpecFromSubplotSpec(r+1,r+1, subplot_spec=self.subplot)
+
+        self._moveaxes(self.sg.ax_joint, self.subgrid[1:, :-1])
+        self._moveaxes(self.sg.ax_marg_x, self.subgrid[0, :-1])
+        self._moveaxes(self.sg.ax_marg_y, self.subgrid[1:, -1])
+
+    def _moveaxes(self, ax, gs):
+        #https://stackoverflow.com/a/46906599/4124317
+        ax.remove()
+        ax.figure=self.fig
+        self.fig.axes.append(ax)
+        self.fig.add_axes(ax)
+        ax._subplotspec = gs
+        ax.set_position(gs.get_position(self.fig))
+        ax.set_subplotspec(gs)
+
+    def _finalize(self):
+        plt.close(self.sg.fig)
+        self.fig.canvas.mpl_connect("resize_event", self._resize)
+        self.fig.canvas.draw()
+
+    def _resize(self, evt=None):
+        self.sg.fig.set_size_inches(self.fig.get_size_inches())
+
+def count_vals(x,y):
+    assert x.size == y.size
+    return x.size
+
+def roundup100(x):
+    result  = int(np.ceil(x/100.) * 100)
+    return result
+
+def seaborn_scatter(df,x_key,y_key,band,c_key=None,ckey_ascending=True,kind='scatter',data_set=None,alpha=None,**kwargs):
+    date_0      = df.datetime.min()
+    date_1      = df.datetime.max()
+
+    xx      = df[x_key]
+    xpd     = prmd.get(x_key,{})
+    x_label = xpd.get('label',x_key)
+    xlim    = xpd.get('lim',None)
+
+    yy      = df[y_key]
+    ypd     = prmd.get(y_key,{})
+    y_label = ypd.get('label',y_key)
+    ylim    = ypd.get('lim',None)
+
+    dft     = df.copy()
+    dft.dropna(subset=[x_key,y_key],inplace=True)
+    dft.sort_values(c_key,inplace=True,ascending=ckey_ascending)
+
+    joint_kws = {}
+    if kind == 'scatter' and c_key is not None:
+        c           = dft[c_key]
+        cpd         = prmd.get(c_key,{})
+        cmap        = cpd.get('cmap',mpl.cm.jet)
+        vmin        = cpd.get('vmin',min(c))
+        vmax        = cpd.get('vmax',max(c))
+        cbar_label  = cpd.get('label',c_key)
+        joint_kws   = dict(c=c,vmin=vmin,vmax=vmax,cmap=cmap,color=None)
+
+    g       = sns.jointplot(x=x_key,y=y_key,data=dft,kind=kind,size=8,xlim=xlim,ylim=ylim,
+                    stat_func=None,joint_kws=joint_kws)
+                
+    g.annotate(count_vals,stat='N',loc='upper right',template='{stat}: {val:g}')
+    g.set_axis_labels(x_label,y_label)
+
+    if data_set == 'eclipse':
+        title = []
+        date_0_str  = date_0.strftime('%d %b %Y %H%M')
+        date_1_str  = date_1.strftime('%H%M UT')
+        date_str    = '{}-{}'.format(date_0_str,date_1_str)
+
+        title.append('{} {}'.format(bandObj.band_dict[band]['freq_name'],data_set.title()))
+        title.append(date_str)
+    else:
+        title = []
+        date_str  = ( date_0.strftime('%d %b  - ') + date_1.strftime('%d %b %Y')
+                    + date_0.strftime(' %H%M-')   + date_1.strftime('%H%M UT') )
+
+        title.append('{} {}'.format(bandObj.band_dict[band]['freq_name'],data_set.title()))
+        title.append(date_str)
+
+    sax = g.ax_marg_x
+#    g.ax_marg_x.set_title('\n'.join(title),loc='right')
+    if alpha is not None:
+#        g.ax_marg_x.set_title('({})'.format(alpha),loc='left',fontsize=36)
+        sax.text(-0.3,0.5,'({})'.format(alpha),transform=sax.transAxes,fontweight='bold',fontsize=36,va='center')
+
+
+    # Histogram Ticklabels
+    ssize   = 'medium'
+
+    sax = g.ax_marg_x
+    sylim   = ( 0, roundup100(sax.get_ylim()[1]) )
+    sax.set_ylim(sylim)
+    sax.set_yticks(sylim)
+    for tl in sax.get_yticklabels():
+        tl.set_visible(True)
+        tl.set_fontsize(ssize)
+
+    sax = g.ax_marg_y
+    sxlim   = ( 0, roundup100(sax.get_xlim()[1]) )
+    sax.set_xlim(sxlim)
+    sax.set_xticks(sxlim)
+    for tl in sax.get_xticklabels():
+        tl.set_visible(True)
+        tl.set_fontsize(ssize)
+
+    return g
 
 class MySqlEclipse(object):
     def __init__(self,user='hamsci',password='hamsci',host='localhost',database='seqp_analysis'):
@@ -60,6 +278,7 @@ def bin_inner_loop(run_dct):
         bins    = np.arange(bin_0,bin_1,bin_stp)
         weights = 1/(vals**3)
         hist,bin_edges  = np.histogram(vals,bins=bins,weights=weights)
+        hist    = 10*np.log10(hist)
 
         for hist_val,bin_edge in zip(hist,bin_edges[:-1]):
             result              = seqp.geopack.greatCircleMove(
@@ -67,10 +286,10 @@ def bin_inner_loop(run_dct):
             mid_lat             = float(result[0])
             mid_lon             = float(result[1])
             
-#                        mid_obsc_300km      = float(eclipse_calc.calculate_obscuration(
+#                        obs_mid_300km      = float(eclipse_calc.calculate_obscuration(
 #                                                date,mid_lat,mid_lon,height=300e3))
 
-            mid_obsc_300km      = get_eclipse_obscuration(mid_lat,mid_lon,date,height=300e3)
+            obs_mid_300km      = get_eclipse_obscuration(mid_lat,mid_lon,date,height=300e3)
 
             dct = OrderedDict()
             dct['tx_call']      	= tx_call
@@ -81,11 +300,11 @@ def bin_inner_loop(run_dct):
             dct['datetime']     	= date
             dct['freq']         	= freq
             dct['ionosphere']   	= ionosphere
-            dct['range_km']     	= bin_edge
+            dct['R_gc']     	        = bin_edge
             dct['hist']         	= hist_val
             dct['mid_lat']      	= mid_lat
             dct['mid_lon']      	= mid_lon
-            dct['mid_obsc_300km']   = mid_obsc_300km
+            dct['obs_mid_300km']        = obs_mid_300km
             result_list.append(dct)
     return result_list
 
@@ -226,14 +445,14 @@ def compute_ray_density(df):
                 rdct['freq']         	= freq
                 df_date_lst.append(rdct)
 
-#            for run_dct in df_date_lst:
-#                result      = bin_inner_loop(run_dct)
-#                pwr_df_list += result
-            
-            with mp.Pool() as pool:
-                results  = pool.map(bin_inner_loop,df_date_lst)
-            for result in results:
+            for run_dct in df_date_lst:
+                result      = bin_inner_loop(run_dct)
                 pwr_df_list += result
+            
+#            with mp.Pool() as pool:
+#                results  = pool.map(bin_inner_loop,df_date_lst)
+#            for result in results:
+#                pwr_df_list += result
 
 
     df_pwr  = pd.DataFrame(pwr_df_list)
@@ -273,16 +492,21 @@ def plot_power_histograms(df_pwr):
                     df_tmp  = df_pair[tf]
 
                     # Histogram plotting...
-                    xx      = df_tmp['range_km'].tolist()
+                    xx      = df_tmp['R_gc'].tolist()
                     yy      = df_tmp['hist'].tolist()
                     dx      = xx[1]-xx[0]
 
+                    ydct    = prmd['hist']
+                    ylim    = ydct['lim']
+
                     ax      = fig.add_subplot(2,1,plt_inx+1)
-                    ax.bar(xx,yy,dx,align='edge')
+#                    ax.bar(xx,yy,dx,align='edge')
+                    ax.bar(xx,np.abs(yy),dx,ylim[0],align='edge')
+
                     ax.set_xlim(xx[0],xx[-1]+dx)
-                    ax.set_ylim(0,6e-9)
+                    ax.set_ylim(ylim)
                     ax.set_xlabel('Ground Range [km]')
-                    ax.set_ylabel('Number')
+                    ax.set_ylabel(ydct['label'])
 
                     title   = []
                     tmp     = 'TX: {} RX: {} {:.3f} MHz'.format(tx_call,rx_call,freq)
@@ -301,6 +525,128 @@ def plot_power_histograms(df_pwr):
                 fig.savefig(fpath,bbox_inches='tight')
                 plt.close(fig)
 
+def plot_scatterplots(df_pwr):
+    df_pwr          = df_pwr.rename(columns={'freq':'frequency'})
+    df_pwr['band']  = np.floor(df_pwr['frequency'])
+    df_pwr['band']  = df_pwr['band'].map(int)
+
+    # Define Bands
+    bands = [7, 14]
+
+    # Define Plot Keys
+    x_key           = 'obs_mid_300km'
+    y_key           = 'R_gc'
+    c_key           = 'hist'
+    ckey_ascending  = True
+
+    kind            = 'scatter'
+
+    # Define and load in Eclipse and Control datasets.
+    print('Loading data from CSV files...')
+    data_sets   = OrderedDict()
+    dsd = {}
+    data_sets['eclipse']    = dsd
+    
+    dsd = {}
+    data_sets['control']    = dsd
+
+    for data_set,dsd in data_sets.items():
+        if data_set == 'eclipse':
+            ionosphere = 'eclipse'
+        else:
+            ionosphere = 'base'
+
+        tf          = df_pwr['ionosphere'] == ionosphere
+        df          = df_pwr[tf]
+
+        tf          = df['obs_mid_300km'] > 0.
+        df          = df[tf].copy()
+
+        df          = df.sort_values('frequency')
+        dsd['df']   = df
+
+
+    alphas   = ['a','b','c','d']
+    # Create run list/dictionaries.
+    sgs = []
+    plot_nr = 0
+    for inx,band in enumerate(bands):
+        for data_set,dsd in data_sets.items():
+            alpha   = alphas[plot_nr]
+            df      = dsd['df']
+
+            this_df     = df[df.band == band]
+            band_tag    = bandObj.band_dict[band]['name'].replace(' ','')
+
+            dct = {}
+            dct['data_set']         = data_set
+            dct['df']               = this_df
+            dct['x_key']            = x_key
+            dct['y_key']            = y_key
+            dct['c_key']            = c_key
+            dct['ckey_ascending']   = ckey_ascending 
+            dct['kind']             = kind
+            dct['band']             = band
+            dct['alpha']            = alpha
+
+            if len(this_df) == 0:
+                sg = None
+            else:
+                sg  = seaborn_scatter(**dct)
+            sgs.append(sg)
+            plot_nr     += 1
+
+    fig     = plt.figure(figsize=(20,20))
+    gspecs  = gridspec.GridSpec(2,2)
+    for sg,gspec in zip(sgs,gspecs):
+        if sg is not None:
+            mg  = SeabornFig2Grid(sg,fig,gspec)
+
+    left    = 0.30
+    width   = 0.40
+    bottom  = 0.005
+    height  = 0.025
+
+    cpd         = prmd.get(c_key,{})
+    cmap        = cpd.get('cmap',mpl.cm.jet)
+    vmin        = cpd.get('vmin')
+    vmax        = cpd.get('vmax')
+    cbar_label  = cpd.get('label',c_key)
+    rect    = (left,bottom,width,height)
+    cax     = fig.add_axes(rect)
+    norm    = mpl.colors.Normalize(vmin,vmax)
+    cbar    = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm, orientation='horizontal')
+    cbar.set_label(cbar_label)
+
+    fontsize = 36
+    text    = 'Eclipse'
+    xpos    = 0.25
+    ypos    = 0.865
+    fig.text(xpos,ypos,text,fontsize=fontsize,fontweight='bold',ha='center')
+
+    text    = 'Control'
+    xpos    = 0.70
+    fig.text(xpos,ypos,text,fontsize=fontsize,fontweight='bold',ha='center')
+
+    xpos    = 0.0200
+    ypos    = 0.65
+    text    = '7 MHz'
+    fig.text(xpos,ypos,text,fontsize=fontsize,fontweight='bold',va='center',rotation=90.)
+
+    ypos    = 0.225
+    text    = '14 MHz'
+    fig.text(xpos,ypos,text,fontsize=fontsize,fontweight='bold',va='center',rotation=90.)
+
+    top     = 0.85
+    lft     = 0.88
+    fig.text(0.0,0.0,u"\u00B7")
+    fig.text(0.0,top,u"\u00B7")
+    fig.text(lft,top,u"\u00B7")
+    fig.text(lft,0.0,u"\u00B7")
+
+    fpath   = os.path.join('plots','sami3_seqp_scatter.png')
+    fig.savefig(fpath,bbox_inches='tight')
+
 if __name__ == '__main__':
     use_cache   = True
 
@@ -314,6 +660,8 @@ if __name__ == '__main__':
         with open(cache_file,'rb') as fl:
             df_pwr  = pickle.load(fl)
 
-    print('Plotting histograms...')
-    plot_power_histograms(df_pwr)
+#    print('Plotting histograms...')
+#    plot_power_histograms(df_pwr)
+
+    plot_scatterplots(df_pwr)
     import ipdb; ipdb.set_trace()
