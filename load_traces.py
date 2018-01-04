@@ -4,6 +4,7 @@ import datetime
 import glob
 from collections import OrderedDict
 import pickle
+import multiprocessing as mp
 
 import pandas as pd
 import numpy as np
@@ -36,6 +37,57 @@ class MySqlEclipse(object):
 
         self.db     = db
 mysql_ecl = MySqlEclipse()
+
+def bin_inner_loop(run_dct):
+    df_date     = run_dct.get('df_date')
+    tx_call     = run_dct.get('tx_call')
+    rx_call     = run_dct.get('rx_call')
+    tx_lat      = run_dct.get('tx_lat')
+    tx_lon      = run_dct.get('tx_lon')
+    azm         = run_dct.get('azm')
+    date        = run_dct.get('date')
+    freq        = run_dct.get('freq')
+
+    result_list = []
+    for plt_inx,ionosphere in enumerate(['base','eclipse']):
+        tf      = df_date['ionosphere'] == ionosphere
+        df_tmp  = df_date[tf]
+
+        vals    = df_tmp['rdall_ground_range']
+        bin_0   = 0
+        bin_1   = 8000
+        bin_stp = 100
+        bins    = np.arange(bin_0,bin_1,bin_stp)
+        weights = 1/(vals**3)
+        hist,bin_edges  = np.histogram(vals,bins=bins,weights=weights)
+
+        for hist_val,bin_edge in zip(hist,bin_edges[:-1]):
+            result              = seqp.geopack.greatCircleMove(
+                                    tx_lat,tx_lon,bin_edge/2.,azm)
+            mid_lat             = float(result[0])
+            mid_lon             = float(result[1])
+            
+#                        mid_obsc_300km      = float(eclipse_calc.calculate_obscuration(
+#                                                date,mid_lat,mid_lon,height=300e3))
+
+            mid_obsc_300km      = get_eclipse_obscuration(mid_lat,mid_lon,date,height=300e3)
+
+            dct = OrderedDict()
+            dct['tx_call']      	= tx_call
+            dct['rx_call']      	= rx_call
+            dct['tx_lat']       	= tx_lat
+            dct['tx_lon']       	= tx_lon
+            dct['azm']          	= azm
+            dct['datetime']     	= date
+            dct['freq']         	= freq
+            dct['ionosphere']   	= ionosphere
+            dct['range_km']     	= bin_edge
+            dct['hist']         	= hist_val
+            dct['mid_lat']      	= mid_lat
+            dct['mid_lon']      	= mid_lon
+            dct['mid_obsc_300km']   = mid_obsc_300km
+            result_list.append(dct)
+    return result_list
 
 def get_eclipse_obscuration(lat,lon,date,height=300e3):
     user        = 'hamsci'
@@ -158,45 +210,31 @@ def compute_ray_density(df):
             dates   = [x.to_pydatetime() for x in df_pair['datetime']]
             dates   = list(set(dates))
             dates.sort()
+            df_date_lst = []
             for date in dates:
-                for plt_inx,ionosphere in enumerate(['base','eclipse']):
-                    tf      = np.logical_and(df_pair['datetime'] == date,df_pair['ionosphere'] == ionosphere)
-                    df_tmp  = df_pair[tf]
+                tf      = df_pair['datetime'] == date
+                df_date = df_pair[tf]
 
-                    vals    = df_tmp['rdall_ground_range']
-                    bin_0   = 0
-                    bin_1   = 8000
-                    bin_stp = 100
-                    bins    = np.arange(bin_0,bin_1,bin_stp)
-                    weights = 1/(vals**3)
-                    hist,bin_edges  = np.histogram(vals,bins=bins,weights=weights)
+                rdct    = {}
+                rdct['df_date']         = df_date
+                rdct['tx_call']      	= tx_call
+                rdct['rx_call']      	= rx_call
+                rdct['tx_lat']       	= tx_lat
+                rdct['tx_lon']       	= tx_lon
+                rdct['azm']          	= azm
+                rdct['date']         	= date
+                rdct['freq']         	= freq
+                df_date_lst.append(rdct)
 
-                    for hist_val,bin_edge in zip(hist,bin_edges[:-1]):
-                        result              = seqp.geopack.greatCircleMove(
-                                                tx_lat,tx_lon,bin_edge/2.,azm)
-                        mid_lat             = float(result[0])
-                        mid_lon             = float(result[1])
-                        
-#                        mid_obsc_300km      = float(eclipse_calc.calculate_obscuration(
-#                                                date,mid_lat,mid_lon,height=300e3))
+#            for run_dct in df_date_lst:
+#                result      = bin_inner_loop(run_dct)
+#                pwr_df_list += result
+            
+            with mp.Pool() as pool:
+                results  = pool.map(bin_inner_loop,df_date_lst)
+            for result in results:
+                pwr_df_list += result
 
-                        mid_obsc_300km      = get_eclipse_obscuration(mid_lat,mid_lon,date,height=300e3)
-
-                        dct = OrderedDict()
-                        dct['tx_call']      	= tx_call
-                        dct['rx_call']      	= rx_call
-                        dct['tx_lat']       	= tx_lat
-                        dct['tx_lon']       	= tx_lon
-                        dct['azm']          	= azm
-                        dct['datetime']     	= date
-                        dct['freq']         	= freq
-                        dct['ionosphere']   	= ionosphere
-                        dct['range_km']     	= bin_edge
-                        dct['hist']         	= hist_val
-                        dct['mid_lat']      	= mid_lat
-                        dct['mid_lon']      	= mid_lon
-                        dct['mid_obsc_300km']   = mid_obsc_300km
-                        pwr_df_list.append(dct)
 
     df_pwr  = pd.DataFrame(pwr_df_list)
     return df_pwr
@@ -264,7 +302,7 @@ def plot_power_histograms(df_pwr):
                 plt.close(fig)
 
 if __name__ == '__main__':
-    use_cache   = False
+    use_cache   = True
 
     cache_file  = 'df_pwr.p'
     if not use_cache:
@@ -274,7 +312,8 @@ if __name__ == '__main__':
             pickle.dump(df_pwr,fl)
     else:
         with open(cache_file,'rb') as fl:
-            df_pwr  = pickle.dump(fl)
+            df_pwr  = pickle.load(fl)
 
+    print('Plotting histograms...')
     plot_power_histograms(df_pwr)
     import ipdb; ipdb.set_trace()
