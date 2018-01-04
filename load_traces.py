@@ -138,8 +138,13 @@ def plot_power_histograms(df_pwr):
             dates   = list(set(dates))
             dates.sort()
             for date in dates:
-                fig = plt.figure(figsize=(10,8))
+                fig         = plt.figure(figsize=(10,8))
 
+                this_dir    = os.path.join(out_dir,
+                                '{:.3f}_{}_{}'.format(freq,rx_call,tx_call))
+                seqp.gen_lib.prep_output({0:this_dir})
+
+                
                 for plt_inx,ionosphere in enumerate(['base','eclipse']):
                     tf      = np.logical_and(df_pair['datetime'] == date,df_pair['ionosphere'] == ionosphere)
                     df_tmp  = df_pair[tf]
@@ -165,9 +170,9 @@ def plot_power_histograms(df_pwr):
                     title.append(tmp)
                     ax.set_title('\n'.join(title))
 
-                date_str    = date.strftime('%Y%m%d.%H%M')
-                fname       = '{}_histogram.png'.format(date_str)
-                fpath       = os.path.join(out_dir,fname)
+                fdate_str   = date.strftime('%Y%m%d.%H%M')
+                fname       = '{}_histogram.png'.format(fdate_str)
+                fpath       = os.path.join(this_dir,fname)
 
                 fig.tight_layout()
                 fig.savefig(fpath,bbox_inches='tight')
