@@ -102,7 +102,6 @@ function eclipse(job_id, make_plot, use_eclipse, ...
 
     job_file        = fopen(strcat(job_path, timestamp_str, '.csv'), 'r');
     out_file        = fopen(strcat(OUT_PATH, 'simulated_',ecl_str,'_', timestamp_str, '.csv'), 'w');
-    out_all_fname   = strcat(OUT_PATH, 'all_simulated_',ecl_str,'_', timestamp_str, '.csv');
 
     % Write header
     fprintf(out_file, ['tx_call,' ...
@@ -180,10 +179,8 @@ function eclipse(job_id, make_plot, use_eclipse, ...
                         iono_en_grid_2d, collision_freq_2d, ...
                         START_HEIGHT, HEIGHT_INC, RANGE_INC, irreg);
         
-                    
-        write_ray_data(rx_call,rx_lat,rx_lon,...
-                        tx_call,tx_lat,tx_lon,...
-                        freq,ray_data,out_all_fname)
+        out_all_fname   = strcat(OUT_PATH, 'all_',rx_call,'_',tx_call,'_',ecl_str,'_', timestamp_str, '.csv');    
+        write_ray_data(rx_call,rx_lat,rx_lon,tx_call,tx_lat,tx_lon,freq,ray_data,out_all_fname)
                     
         % Attempt to identify rays that are hitting the receiver
         num_elevs = length(ELEVS);

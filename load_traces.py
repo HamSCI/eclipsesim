@@ -648,11 +648,12 @@ def plot_scatterplots(df_pwr):
     fig.savefig(fpath,bbox_inches='tight')
 
 if __name__ == '__main__':
-    use_cache   = True
+    use_cache   = False
 
     cache_file  = 'df_pwr.p'
     if not use_cache:
         df      = load_traces()
+        import ipdb; ipdb.set_trace()
         df_pwr  = compute_ray_density(df)
         with open(cache_file,'wb') as fl:
             pickle.dump(df_pwr,fl)

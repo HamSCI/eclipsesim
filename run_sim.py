@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import multiprocessing as mp
 
+log_file    = 'logs/run_sim.txt'
 JOB_PATH    = "./jobs/"
 SAMI3_PATH  = "./sami3/"
 OUT_PATH    = "./traces/"
@@ -27,7 +28,6 @@ def create_job_files():
     src_files.append(( 7.030,'naf_files/7_rxTxPairs.csv'))
     src_files.append((14.030,'naf_files/14_rxTxPairs.csv'))
 
-    files       = []
 
     sDate   = datetime.datetime(2017,8,21,16)
     eDate   = datetime.datetime(2017,8,21,22)
@@ -39,9 +39,11 @@ def create_job_files():
 
     dates       = []
     this_date   = sDate
+    files       = []
     while this_date < eDate:
         fname   = this_date.strftime('%Y-%m-%d %H:%M:%S.csv')
         fpath   = os.path.join(JOB_PATH,fname)
+        files.append(fpath)
         with open(fpath,'w') as fl:
             line    = 'RX_CALL,TX_CALL,MHZ,RX_LAT,RX_LON,TX_LAT,TX_LON'
             fl.write(line)
@@ -64,12 +66,16 @@ def create_job_files():
                                 str(rx_lat),str(rx_lon),str(tx_lat),str(tx_lon)])
                     fl.write(line)
 
-                files.append(fpath)
-                this_date   += dt
+        this_date   += dt
 
     return files
 
 def run_job(job):
+    with open(log_file,'a') as fl:
+        line = "{}: {!s}\n".format(job,datetime.datetime.now())
+        fl.write(line)
+
+
     job_id  = job_to_jobid(job)
     if job_id < 0 or job_id > 159:
         return
@@ -85,6 +91,10 @@ jobs    = create_job_files()
 
 #for job in jobs:
 #    run_job(job)
+
+with open(log_file,'w') as fl:
+    line = "Job started: {!s}\n".format(datetime.datetime.now())
+    fl.write(line)
 
 with mp.Pool(4) as pool:
     pool.map(run_job,jobs)
