@@ -85,8 +85,8 @@ prmd['srpt_0']          = tmp
 tmp = {}
 tmp['label']            = 'Weighted Ray Denisty'
 tmp['lim']              = (-250,0)
-tmp['vmin']             = -150
-tmp['vmax']             = -50
+tmp['vmin']             = -140
+tmp['vmax']             = -60
 tmp['cmap']             = mpl.cm.viridis
 prmd['hist']         = tmp
 
@@ -648,7 +648,7 @@ def plot_scatterplots(df_pwr):
     fig.savefig(fpath,bbox_inches='tight')
 
 if __name__ == '__main__':
-    use_cache   = False
+    use_cache   = True
 
     cache_file  = 'df_pwr.p'
     if not use_cache:
