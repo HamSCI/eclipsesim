@@ -36,7 +36,7 @@ function plot_raytrace(tx_lat, tx_lon, ray_bearing, start_height, height_inc, io
                '   lat = ' lat_str ', lon = ' lon_str ', bearing = ' ...
                bearing_str];
     start_range = 0;
-    end_range = 2500;
+    end_range = 8000;
     end_range_idx = fix(end_range ./ RANGE_INC) + 1;
     start_ht = start_height;
     start_ht_idx = 1;

@@ -96,5 +96,5 @@ with open(log_file,'w') as fl:
     line = "Job started: {!s}\n".format(datetime.datetime.now())
     fl.write(line)
 
-with mp.Pool(4) as pool:
+with mp.Pool(2) as pool:
     pool.map(run_job,jobs)

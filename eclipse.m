@@ -40,7 +40,7 @@ function eclipse(job_id, make_plot, use_eclipse, ...
 
     SPEED_OF_LIGHT  = 2.99792458e8;
     ELEV_STEP       = 0.5;
-    NUM_HOPS        = 3;
+    NUM_HOPS        = 10;
     ELEVS           = [5:ELEV_STEP:60];
     TX_POWER        = 1;
     GAIN_TX_DB      = 1;
