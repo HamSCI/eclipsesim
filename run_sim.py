@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import datetime
 import pandas as pd
 import numpy as np
@@ -12,6 +13,12 @@ OUT_PATH    = "./traces/"
 PLOT_PATH   = "./plots/"
 PLOTS       = 1
 ECLIPSE     = 1
+
+if os.path.exists(JOB_PATH):
+    shutil.rmtree(JOB_PATH)
+
+os.makedirs(JOB_PATH)
+    
 
 def job_to_jobid(job_fpath):
     sDate       = datetime.datetime(2017,8,21,16)
@@ -29,13 +36,13 @@ def create_job_files():
     src_files.append((14.030,'naf_files/14_rxTxPairs.csv'))
 
 
-    sDate   = datetime.datetime(2017,8,21,16)
-    eDate   = datetime.datetime(2017,8,21,22)
-    dt      = datetime.timedelta(minutes=3)
-
-#    sDate   = datetime.datetime(2017,8,21,18)
-#    eDate   = datetime.datetime(2017,8,21,18,6)
+#    sDate   = datetime.datetime(2017,8,21,16)
+#    eDate   = datetime.datetime(2017,8,21,22)
 #    dt      = datetime.timedelta(minutes=3)
+
+    sDate   = datetime.datetime(2017,8,21,17,12)
+    eDate   = datetime.datetime(2017,8,21,17,21)
+    dt      = datetime.timedelta(minutes=3)
 
     dates       = []
     this_date   = sDate
@@ -89,12 +96,12 @@ def run_job(job):
 
 jobs    = create_job_files()
 
-#for job in jobs:
-#    run_job(job)
-
 with open(log_file,'w') as fl:
     line = "Job started: {!s}\n".format(datetime.datetime.now())
     fl.write(line)
 
-with mp.Pool(2) as pool:
-    pool.map(run_job,jobs)
+for job in jobs:
+    run_job(job)
+
+#with mp.Pool(2) as pool:
+#    pool.map(run_job,jobs)
