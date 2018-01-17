@@ -85,8 +85,8 @@ prmd['srpt_0']          = tmp
 tmp = {}
 tmp['label']            = 'Weighted Ray Denisty'
 tmp['lim']              = (-250,0)
-tmp['vmin']             = -150
-tmp['vmax']             = -50
+tmp['vmin']             = -110
+tmp['vmax']             = -75
 tmp['cmap']             = mpl.cm.viridis
 prmd['hist']         = tmp
 
@@ -445,14 +445,14 @@ def compute_ray_density(df):
                 rdct['freq']         	= freq
                 df_date_lst.append(rdct)
 
-            for run_dct in df_date_lst:
-                result      = bin_inner_loop(run_dct)
-                pwr_df_list += result
-            
-#            with mp.Pool() as pool:
-#                results  = pool.map(bin_inner_loop,df_date_lst)
-#            for result in results:
+#            for run_dct in df_date_lst:
+#                result      = bin_inner_loop(run_dct)
 #                pwr_df_list += result
+            
+            with mp.Pool() as pool:
+                results  = pool.map(bin_inner_loop,df_date_lst)
+            for result in results:
+                pwr_df_list += result
 
 
     df_pwr  = pd.DataFrame(pwr_df_list)
@@ -648,12 +648,11 @@ def plot_scatterplots(df_pwr):
     fig.savefig(fpath,bbox_inches='tight')
 
 if __name__ == '__main__':
-    use_cache   = False
+    use_cache   = True
 
     cache_file  = 'df_pwr.p'
     if not use_cache:
         df      = load_traces()
-        import ipdb; ipdb.set_trace()
         df_pwr  = compute_ray_density(df)
         with open(cache_file,'wb') as fl:
             pickle.dump(df_pwr,fl)
