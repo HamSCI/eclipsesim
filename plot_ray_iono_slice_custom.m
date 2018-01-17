@@ -343,7 +343,13 @@ for idx = 1:length(ray)
     % resample ray at a finer step size
     len = length(ray(idx).gndrng);
     ray_gndrng = [ray(idx).gndrng(1) : 0.1 : ray(idx).gndrng(len)];
-    ray_height = interp1(ray(idx).gndrng, ray(idx).height, ray_gndrng, 'pchip');
+    
+    % Make sure there is only one ground range value for each ray...
+    this_gndrng = ray(idx).gndrng;
+    this_height = ray(idx).height;
+    [this_gndrng_unq, unq_index] = unique(this_gndrng); 
+    
+    ray_height = interp1(this_gndrng_unq, this_height(unq_index), ray_gndrng, 'pchip');
 
     % mask out the ray where it lies outside the ionosphere image
     mask_idx = find(ray_gndrng < start_range  | ray_gndrng > end_range); 
