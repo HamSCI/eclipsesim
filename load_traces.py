@@ -3,7 +3,6 @@ import os
 import datetime
 import glob
 from collections import OrderedDict
-import pickle
 import multiprocessing as mp
 
 import pandas as pd
@@ -651,14 +650,13 @@ if __name__ == '__main__':
     use_cache   = True
 
     cache_file  = 'df_pwr.p'
+    csv_file    = 'df_pwr.csv.bz2'
     if not use_cache:
         df      = load_traces()
         df_pwr  = compute_ray_density(df)
-        with open(cache_file,'wb') as fl:
-            pickle.dump(df_pwr,fl)
+        df_pwr.to_csv(csv_file,index=False,compression='bz2')
     else:
-        with open(cache_file,'rb') as fl:
-            df_pwr  = pickle.load(fl)
+        df_pwr  = pd.read_csv(csv_file,parse_dates=['datetime'])
 
 #    print('Plotting histograms...')
 #    plot_power_histograms(df_pwr)
