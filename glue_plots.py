@@ -16,24 +16,34 @@ eclipse_pngs    = glob.glob(os.path.join(eclipse_dir,'*.png'))
 
 all_dct     = OrderedDict()
 for fpath in base_pngs + eclipse_pngs:
-    date_str    = os.path.split(fpath)[-1][:19]
+    basename    = os.path.split(fpath)[-1]
+    date_str    = basename[:19]
     this_date   = datetime.datetime.strptime(date_str,'%Y-%m-%d %H:%M:%S')
 
-    if this_date not in all_dct:
-        all_dct[this_date] = {}
+    this_str    = '_'.join(basename[20:-4].split('_')[:-1])
 
+    if this_str not in all_dct:
+        all_dct[this_str] = {}
+
+    if this_date not in all_dct[this_str]:
+        all_dct[this_str][this_date] = {}
+    
     if 'base' in fpath:
-        all_dct[this_date]['base']       = fpath
+        all_dct[this_str][this_date]['base']       = fpath
     else:
-        all_dct[this_date]['eclipse']    = fpath
+        all_dct[this_str][this_date]['eclipse']    = fpath
 
-for this_date,path_dct in all_dct.items():
-    base_fpath      = path_dct.get('base')
-    eclipse_fpath   = path_dct.get('eclipse')
+for this_str,this_dct in all_dct.items():
+    this_dir    = os.path.join(combined_dir,this_str)
+    seqp.gen_lib.prep_output({0:this_dir})
 
-    fname   = os.path.split(base_fpath)[-1].replace('_base','')
-    combined_fpath  = os.path.join(combined_dir,fname)
+    for this_date,path_dct in this_dct.items():
+        base_fpath      = path_dct.get('base')
+        eclipse_fpath   = path_dct.get('eclipse')
 
-    cmd = 'convert "{}" "{}" -append "{}"'.format(base_fpath,eclipse_fpath,combined_fpath)
-    print(cmd)
-    os.system(cmd)
+        fname   = os.path.split(base_fpath)[-1].replace('_base','')
+        combined_fpath  = os.path.join(this_dir,fname)
+
+        cmd = 'convert "{}" "{}" -append "{}"'.format(base_fpath,eclipse_fpath,combined_fpath)
+        print(cmd)
+        os.system(cmd)
