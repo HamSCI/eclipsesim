@@ -275,9 +275,11 @@ def bin_inner_loop(run_dct):
         bin_1   = 8000
         bin_stp = 100
         bins    = np.arange(bin_0,bin_1,bin_stp)
-        weights = 1/(vals**3)
-        hist,bin_edges  = np.histogram(vals,bins=bins,weights=weights)
-        hist    = 10*np.log10(hist)
+        hist,bin_edges  = np.histogram(vals,bins=bins)
+
+#        weights = 1/(vals**3)
+#        hist,bin_edges  = np.histogram(vals,bins=bins,weights=weights)
+#        hist    = 10*np.log10(hist)
 
         for hist_val,bin_edge in zip(hist,bin_edges[:-1]):
             result              = seqp.geopack.greatCircleMove(
@@ -646,10 +648,189 @@ def plot_scatterplots(df_pwr):
     fpath   = os.path.join('plots','sami3_seqp_scatter.png')
     fig.savefig(fpath,bbox_inches='tight')
 
+def plot_sea(df_pwr,sea=True):
+    df_pwr          = df_pwr.rename(columns={'freq':'frequency','rx_call':'call_0','tx_call':'call_1'})
+    df_pwr['band']  = np.floor(df_pwr['frequency'])
+    df_pwr['band']  = df_pwr['band'].map(int)
+
+    map_left    = 0.
+    map_width   = 0.50
+
+    ts_left     = 0.55
+    ts_width    = 0.45
+
+    h_pad       = 0.05
+
+    height      = 0.4
+    v_pad       = 0.1
+
+    ts_left     = map_width + h_pad
+    fig = plt.figure(figsize=(20.5,12))
+
+    pdct    = {}
+    tmp     = {}
+    tmp['csv']  = 'naf_files/7_rxTxPairs.csv'
+    pdct[7]     = tmp
+    
+    tmp     = {}
+    tmp['csv']  = 'naf_files/14_rxTxPairs.csv'
+    pdct[14]    = tmp
+
+    alphabet    = ['(c)','(d)','(a)','(b)']
+    plot_nr     = 0
+    for inx,band in enumerate([14,7]):
+        df_pair = pd.read_csv(pdct[band]['csv'],parse_dates=['ecl_maxtime','partial_end','partial_start'])
+
+        this_bottom = inx*(height+v_pad) + v_pad
+        map_ax      = fig.add_axes([map_left,this_bottom,map_width,height])
+        ax          = map_ax
+
+        row_0       = df_pair.iloc[0]
+        call_0      = row_0['call_0']
+        lat_0       = row_0['lat_0']
+        lon_0       = row_0['lon_0']
+
+        sDate       = datetime.datetime(2017,8,21,14)
+        eDate       = datetime.datetime(2017,8,21,22)
+
+        map_prm = {}
+        map_prm['llcrnrlon'] = -130.
+        map_prm['llcrnrlat'] = 20
+        map_prm['urcrnrlon'] = -60.
+        map_prm['urcrnrlat'] = 55.
+
+        hmap    = seqp.maps.HamMap(sDate,eDate,ax,show_title=False,**map_prm)
+        hmap.overlay_gridsquares(label_precision=0,major_style={'color':'0.8','dashes':[1,1]})
+
+        m_zorder    = 100
+        tx_size     = 50
+        rx_size     = 50
+        lw          =  3
+
+#        c0_lbl      = '{!s} ({!s})'.format(call_0,df_pair.n_spots.sum())
+        c0_lbl      = call_0
+        hmap.m.scatter(lon_0,lat_0,marker='^',s=rx_size,label=c0_lbl,color='k',zorder=m_zorder,lw=lw)
+
+        for inx,row in df_pair.iterrows():
+            c1          = row['call_1']
+
+            n_spots     = row['n_spots']
+            lat_1       = row['lat_1']
+            lon_1       = row['lon_1']
+            color       = row['color']
+
+#            c1_lbl      = '{!s} ({!s})'.format(c1,n_spots)
+            c1_lbl      = c1
+            hmap.m.scatter(lon_1,lat_1,marker='*',s=tx_size,color=color,zorder=m_zorder,label=c1_lbl,lw=lw)
+
+            hmap.m.scatter(row['lon_mid'],row['lat_mid'],marker='o',s=20,color=color,zorder=m_zorder,lw=lw)
+            hmap.m.drawgreatcircle(lon_0,lat_0,lon_1,lat_1,color=color,lw=2)
+
+#        title       = ['{!s} RBN Pairs'.format(call_0)] + self.title
+#        fontdict    = {'weight':'bold','size':'x-large'}
+#        ax.text(0.5,1.025,'\n'.join(title),fontdict=fontdict,transform=ax.transAxes,ha='center')
+
+        leg = ax.legend(loc='lower left',ncol=3)
+        frame   = leg.get_frame()
+        leg.set_zorder(100)
+#        pair_obj.plot_pair_map(map_ax)
+        letter  = alphabet[plot_nr]
+        letter_dct = {'fontweight':'bold','fontsize':22,'zorder':500}
+        let_xpos    = 0.01
+        let_ypos    = 0.925
+        map_ax.text(let_xpos,let_ypos,letter,transform=map_ax.transAxes,**letter_dct)
+        plot_nr += 1
+
+        ################################################################################ 
+        ################################################################################ 
+
+        ts_ax   = fig.add_axes([ts_left,this_bottom,ts_width,height])
+#        pair_obj.plot_pair_ts(ts_ax)
+        ax = ts_ax
+        row_0       = df_pair.iloc[0]
+        call_0      = row_0['call_0']
+
+        spans_0     = []
+        spans_1     = []
+
+        df      = df_pwr[df_pwr.band == band]
+        y_key   = 'hist'
+        for inx,row in df_pair.iterrows():
+            c1          = row['call_1']
+            n_spots     = row['n_spots']
+            color       = row['color']
+            R_gc        = row['R_gc']
+
+            c1_lbl      = '{!s} ({!s})'.format(c1,n_spots)
+
+            tf          = np.logical_and(df['call_0']==call_0,df['call_1']==c1)
+            df_tmp      = df[tf]
+
+            drgc        = np.array(np.abs(df_tmp['R_gc']-R_gc).tolist())
+            tf          = drgc < 50 
+            df_tmp      = df_tmp[tf]
+
+            df_tmp      = df_tmp.sort_values('datetime')
+
+            xx          = np.array([x.to_pydatetime() for x in df_tmp['datetime']])
+
+            if sea:
+                xx  = xx - row['ecl_maxtime']
+                xx  = [x.total_seconds()/3600. for x in xx]
+
+                span_0  = (row['partial_start'] - row['ecl_maxtime']).total_seconds()/3600.
+                span_1  = (row['partial_end']   - row['ecl_maxtime']).total_seconds()/3600.
+                spans_0.append(span_0)
+                spans_1.append(span_1)
+
+            yy  = np.array(df_tmp[y_key].tolist())
+#            yy  = (yy - np.nanmean(yy))/np.nanstd(yy)
+#            yy  = (yy - np.nanmean(yy))
+
+            ax.plot(xx,yy,ls=' ',marker='.',color=color,label=None)
+
+        ylabel  = prmd[y_key].get('label',y_key)
+        ax.set_ylabel(ylabel)
+
+        if sea:
+            span_0  = np.min(spans_0)
+            span_1  = np.max(spans_1)
+            ax.axvspan(span_0,span_1,color='0.7',label='Partial Eclipse')
+            ax.axvline(0,lw=2,ls='--',color='k',label='Maximum Eclipse')
+            ax.set_xlabel('Eclipse Epoch Time [hr]')
+            ax.set_xlim(-4,4)
+        else:
+            ax.set_xlabel('Time [UT]')
+            ax.set_xlim(datetime.datetime(2017,8,21,14),datetime.datetime(2017,8,21,22))
+            xts     = [mpl.dates.num2date(x) for x in ax.get_xticks()]
+            xtls    = []
+            for inx,xt in enumerate(xts):
+                xtl = xt.strftime('%H%M')
+                if inx == 0:
+                    xtl = '{}\n{}'.format(xtl,xt.strftime('%d %b %Y'))
+                xtls.append(xtl)
+            ax.set_xticklabels(xtls)
+            
+            xtl = ax.get_xticklabels()[0]
+            xtl.set_ha('left')
+        
+        ax.legend(loc='lower left',ncol=1)
+        letter  = alphabet[plot_nr]
+        ts_ax.text(let_xpos,let_ypos,letter,transform=ts_ax.transAxes,**letter_dct)
+        plot_nr += 1
+
+        title = '{} {} RBN Receiver Most Spotted Stations'.format(bandObj.band_dict[band]['freq_name'],call_0)
+#        title = 'RBN Receiver Most Spotted Stations'
+        fontdict = {'size':24,'weight':'bold'}
+        xpos    = 0.5
+        ypos    = this_bottom + height + 0.010
+        fig.text(xpos,ypos,title,fontdict=fontdict,ha='center')
+
+    fpath   = os.path.join('plots','sami3_seqp_sea.png')
+    fig.savefig(fpath,bbox_inches='tight')
 if __name__ == '__main__':
     use_cache   = True
 
-    cache_file  = 'df_pwr.p'
     csv_file    = 'df_pwr.csv.bz2'
     if not use_cache:
         df      = load_traces()
@@ -662,4 +843,6 @@ if __name__ == '__main__':
 #    plot_power_histograms(df_pwr)
 
     plot_scatterplots(df_pwr)
+
+    plot_sea(df_pwr)
     import ipdb; ipdb.set_trace()
