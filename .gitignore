@@ -4,4 +4,7 @@ eclipse2017_ionopath
 jobs/*
 plots/*
 traces/*
-sami3/
+sami3/*
+
+seqp/*
+eclipse_calc/*
