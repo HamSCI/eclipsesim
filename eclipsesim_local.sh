@@ -24,7 +24,7 @@ for this_job in ${jobs}; do
     job_id=`./job_to_jobid "${this_job}"`
 
     # Run the program
-    matlab -nodisplay -r "dbstop in eclipse at 198; eclipse(${job_id}, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
-#    matlab -nodisplay -r "eclipse(${job_id}, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
+#    matlab -nodisplay -r "dbstop in eclipse at 198; eclipse(${job_id}, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
+    matlab -nodisplay -r "eclipse(${job_id}, ${PLOTS}, ${ECLIPSE}, '${JOB_PATH}', '${OUT_PATH}', '${PLOT_PATH}', '${SAMI3_PATH}'); exit;"
 done
 unset IFS
