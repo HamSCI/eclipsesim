@@ -6,19 +6,23 @@ import pandas as pd
 import numpy as np
 import multiprocessing as mp
 
-log_file    = 'logs/run_sim.txt'
-JOB_PATH    = "./jobs/"
-SAMI3_PATH  = "./sami3/"
-OUT_PATH    = "./traces/"
-PLOT_PATH   = "./plots/"
+this_dir    = os.path.dirname(os.path.realpath(__file__))
+
+log_file    = os.path.join(this_dir,'logs/run_sim.txt')
+JOB_PATH    = os.path.join(this_dir,'jobs/')
+SAMI3_PATH  = os.path.join(this_dir,'sami3/')
+OUT_PATH    = os.path.join(this_dir,'traces/')
+PLOT_PATH   = os.path.join(this_dir,'plots/')
+
 PLOTS       = 1
 ECLIPSE     = 1
-
-if os.path.exists(JOB_PATH):
-    shutil.rmtree(JOB_PATH)
-
-os.makedirs(JOB_PATH)
     
+paths       = []
+paths.append(os.path.join(this_dir,'pharlap','mex'))
+paths.append(os.path.join(this_dir,'pharlap','src','matlab'))
+paths.append(this_dir)
+paths       = map(os.path.realpath,paths)
+os.environ['MATLABPATH'] = ':'.join(paths)
 
 def job_to_jobid(job_fpath):
     sDate       = datetime.datetime(2017,8,21,16)
@@ -34,7 +38,6 @@ def create_job_files():
     src_files   = []
     src_files.append(( 7.030,'naf_files/7_rxTxPairs.csv'))
     src_files.append((14.030,'naf_files/14_rxTxPairs.csv'))
-
 
     sDate   = datetime.datetime(2017,8,21,16)
     eDate   = datetime.datetime(2017,8,21,22)
@@ -94,14 +97,20 @@ def run_job(job):
         print(cmd)
         os.system(cmd)
 
-jobs    = create_job_files()
+if __name__ == '__main__':
+    if os.path.exists(JOB_PATH):
+        shutil.rmtree(JOB_PATH)
 
-with open(log_file,'w') as fl:
-    line = "Job started: {!s}\n".format(datetime.datetime.now())
-    fl.write(line)
+    os.makedirs(JOB_PATH)
 
-#for job in jobs:
-#    run_job(job)
+    jobs    = create_job_files()
 
-with mp.Pool(3) as pool:
-    pool.map(run_job,jobs)
+    with open(log_file,'w') as fl:
+        line = "Job started: {!s}\n".format(datetime.datetime.now())
+        fl.write(line)
+
+    #for job in jobs:
+    #    run_job(job)
+
+    with mp.Pool(3) as pool:
+        pool.map(run_job,jobs)
