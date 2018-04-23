@@ -5,6 +5,10 @@ jobs/*
 plots/*
 traces/*
 sami3/*
+sami3_raw/*
 
 seqp/*
 eclipse_calc/*
+
+__pycache__
+/logs

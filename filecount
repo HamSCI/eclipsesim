@@ -1,0 +1,8 @@
+#!/bin/bash
+echo traces/base
+ls traces/base -1|wc -l
+
+echo
+
+echo traces/eclipse
+ls traces/eclipse -1|wc -l
