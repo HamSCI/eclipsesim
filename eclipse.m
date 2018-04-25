@@ -49,7 +49,7 @@ function eclipse(job_id, make_plot, use_eclipse, ...
     CALC_DOPPLER    = 0;
     CALC_IRREGS     = 0;
     KP              = 0;
-    MAX_RANGE       = 10000;
+    MAX_RANGE       = 4000;
     NUM_RANGES      = 201;
     TOL             = 1e-7;
     RANGE_INC       = MAX_RANGE ./ (NUM_RANGES - 1);
