@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import os,glob
 import datetime
+
 from collections import OrderedDict
+from collections import defaultdict
+nested_dict = lambda: defaultdict(nested_dict)
 
 import bz2
 
@@ -75,55 +78,177 @@ def load_ml_grid():
     grid['lons']    = ml_grid['grid_lons']
     return grid
 
-def plot_grid(grids):
+def plot_grid(grids,diff=None):
     nx  = len(grids)
     ny  = 3
 
     inx = list(grids.keys())[0]
-    ref_heights = grids[inx]['heights']
+    ref_heights = grids[inx]['heights'][0,0,:]
 
     marker_sz = 100
-    for alt_inx,alt in enumerate(ref_heights[0,0,:]):
+    for alt_inx,alt in enumerate(ref_heights[:1]):
         fig     = plt.figure(figsize=(15,10))
         for xinx,(src,grid) in enumerate(grids.items()):
             lats    = grid['lats']
             lons    = grid['lons']
             heights = grid['heights']
 
-            ax_inx  = 1 + xinx
-            ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
-            ax.coastlines()
-            xx      = lons[:,:,alt_inx]
-            yy      = lats[:,:,alt_inx]
-            pcoll   = ax.scatter(xx,yy,c=xx,vmin=-180,vmax=180,s=marker_sz,edgecolor='face',marker='s')
-            cbar    = fig.colorbar(pcoll,label='Longitude')
-            ax.set_title(src)
+            if diff is None:
+                out_dir_0   = os.path.join(out_dir,'raw')
 
-            ax_inx  = 3 + xinx
-            ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
-            ax.coastlines()
-            xx      = lons[:,:,alt_inx]
-            yy      = lats[:,:,alt_inx]
-            pcoll   = ax.scatter(xx,yy,c=yy,vmin=-90,vmax=90,s=marker_sz,edgecolor='face',marker='s')
-            cbar    = fig.colorbar(pcoll,label='Latitude')
-            ax.set_title(src)
+                ax_inx  = 1 + xinx
+                ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+                ax.coastlines()
+                xx      = lons[:,:,alt_inx]
+                yy      = lats[:,:,alt_inx]
+                pcoll   = ax.scatter(xx,yy,c=xx,vmin=-180,vmax=180,s=marker_sz,edgecolor='face',marker='s')
+                cbar    = fig.colorbar(pcoll,label='Longitude')
+                ax.set_title(src)
 
-            ax_inx  = 5 + xinx
-            ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
-            ax.coastlines()
-            xx      = lons[:,:,alt_inx]
-            yy      = lats[:,:,alt_inx]
-            zz      = heights[:,:,alt_inx]
-            pcoll   = ax.scatter(xx,yy,c=zz,vmin=0,vmax=600,s=marker_sz,edgecolor='face',marker='s')
-            cbar    = fig.colorbar(pcoll,label='Altitude [km]')
-            ax.set_title(src)
+                ax_inx  = 3 + xinx
+                ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+                ax.coastlines()
+                xx      = lons[:,:,alt_inx]
+                yy      = lats[:,:,alt_inx]
+                pcoll   = ax.scatter(xx,yy,c=yy,vmin=-90,vmax=90,s=marker_sz,edgecolor='face',marker='s')
+                cbar    = fig.colorbar(pcoll,label='Latitude')
+                ax.set_title(src)
+
+                ax_inx  = 5 + xinx
+                ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+                ax.coastlines()
+                xx      = lons[:,:,alt_inx]
+                yy      = lats[:,:,alt_inx]
+                zz      = heights[:,:,alt_inx]
+                pcoll   = ax.scatter(xx,yy,c=zz,vmin=0,vmax=600,s=marker_sz,edgecolor='face',marker='s')
+                cbar    = fig.colorbar(pcoll,label='Altitude [km]')
+                ax.set_title(src)
+            else:
+                out_dir_0   = os.path.join(out_dir,'diff_{!s}'.format(diff))
+                vmin    = None
+                vmax    = None
+
+                xx_0    = lons[:,:,alt_inx]
+                yy_0    = lats[:,:,alt_inx]
+
+                ax_inx  = 1 + xinx
+                ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+                ax.coastlines()
+                zz      = np.diff(xx_0,axis=diff)
+                xx      = np.resize(xx_0,zz.shape)
+                yy      = np.resize(yy_0,zz.shape)
+                pcoll   = ax.scatter(xx,yy,c=zz,vmin=vmin,vmax=vmax,s=marker_sz,edgecolor='face',marker='s')
+                cbar    = fig.colorbar(pcoll,label='Longitude')
+                ax.set_title(src)
+
+                ax_inx  = 3 + xinx
+                ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+                ax.coastlines()
+                zz      = np.diff(yy_0,axis=diff)
+                xx      = np.resize(xx_0,zz.shape)
+                yy      = np.resize(yy_0,zz.shape)
+                pcoll   = ax.scatter(xx,yy,c=zz,vmin=vmin,vmax=vmax,s=marker_sz,edgecolor='face',marker='s')
+                cbar    = fig.colorbar(pcoll,label='Latitude')
+                ax.set_title(src)
+
+                ax_inx  = 5 + xinx
+                ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+                ax.coastlines()
+                zz      = np.diff(heights[:,:,alt_inx],axis=diff)
+                xx      = np.resize(xx_0,zz.shape)
+                yy      = np.resize(yy_0,zz.shape)
+                pcoll   = ax.scatter(xx,yy,c=zz,vmin=vmin,vmax=vmax,s=marker_sz,edgecolor='face',marker='s')
+                cbar    = fig.colorbar(pcoll,label='Altitude [km]')
+                ax.set_title(src)
 
         txt     = '{:.1f} km Altitude'.format(alt)
         fig.text(0.5,1,txt,fontdict={'weight':'bold','size':'x-large'},ha='center')
         fig.tight_layout()
+
+        prep_dir({0:out_dir_0},clear=False)
         fname   = "{:03d}km_alt.png".format(int(alt))
-        fpath   = os.path.join(out_dir,fname)
-        print(fpath)
+        fpath   = os.path.join(out_dir_0,fname)
+        fig.savefig(fpath,bbox_inches='tight')
+        plt.close(fig)
+def get_vminmax(key,diff):
+    prmd    = {}
+    pd = nested_dict()
+    pd['lats'][0]['pm'] = 2.5
+    pd['lats'][1]['pm'] = 2.5
+    pd['lons'][0]['pm'] = 2.5
+    pd['lons'][1]['pm'] = 2.5
+    pd['hgts'][0]['pm'] = 2.5
+    pd['hgts'][1]['pm'] = 2.5
+
+    pm = pd[key][diff]['pm']
+    if pm is None:
+        vmin,vmax   = (None,None)
+    else:
+        vmin,vmax   = (-pm,pm)
+
+    return (vmin,vmax)
+
+def plot_grid_diff(grids,src='raw'):
+    nx  = len(grids)
+    ny  = 3
+    
+    cmap        = 'RdBu'
+    
+    grid        = grids[src]
+    ref_heights = grids[src]['heights'][0,0,:]
+
+    marker_sz = 100
+    for alt_inx,alt in enumerate(ref_heights):
+        fig     = plt.figure(figsize=(15,10))
+        for xinx,diff in enumerate([0,1]):
+            lats    = grid['lats']
+            lons    = grid['lons']
+            heights = grid['heights']
+
+            xx_0    = lons[:,:,alt_inx]
+            yy_0    = lats[:,:,alt_inx]
+
+            vmin,vmax   = get_vminmax('lons',diff)
+            ax_inx  = 1 + xinx
+            ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+            ax.coastlines()
+            zz      = np.diff(xx_0,axis=diff)
+            xx      = np.resize(xx_0,zz.shape)
+            yy      = np.resize(yy_0,zz.shape)
+            pcoll   = ax.scatter(xx,yy,c=zz,vmin=vmin,vmax=vmax,s=marker_sz,edgecolor='face',marker='s',cmap=cmap)
+            cbar    = fig.colorbar(pcoll,label='Longitude')
+            ax.set_title('{!s} - Diff {!s}'.format(src,diff))
+
+            vmin,vmax   = get_vminmax('lats',diff)
+            ax_inx  = 3 + xinx
+            ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+            ax.coastlines()
+            zz      = np.diff(yy_0,axis=diff)
+            xx      = np.resize(xx_0,zz.shape)
+            yy      = np.resize(yy_0,zz.shape)
+            pcoll   = ax.scatter(xx,yy,c=zz,vmin=vmin,vmax=vmax,s=marker_sz,edgecolor='face',marker='s',cmap=cmap)
+            cbar    = fig.colorbar(pcoll,label='Latitude')
+            ax.set_title('{!s} - Diff {!s}'.format(src,diff))
+
+            vmin,vmax   = get_vminmax('hgts',diff)
+            ax_inx  = 5 + xinx
+            ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
+            ax.coastlines()
+            zz      = np.diff(heights[:,:,alt_inx],axis=diff)
+            xx      = np.resize(xx_0,zz.shape)
+            yy      = np.resize(yy_0,zz.shape)
+            pcoll   = ax.scatter(xx,yy,c=zz,vmin=vmin,vmax=vmax,s=marker_sz,edgecolor='face',marker='s',cmap=cmap)
+            cbar    = fig.colorbar(pcoll,label='Altitude [km]')
+            ax.set_title('{!s} - Diff {!s}'.format(src,diff))
+
+        txt     = '{:.1f} km Altitude'.format(alt)
+        fig.text(0.5,1,txt,fontdict={'weight':'bold','size':'x-large'},ha='center')
+        fig.tight_layout()
+
+        out_dir_0   = os.path.join(out_dir,'diff')
+        prep_dir({0:out_dir_0},clear=False)
+        fname   = "{:03d}km_alt.png".format(int(alt))
+        fpath   = os.path.join(out_dir_0,fname)
         fig.savefig(fpath,bbox_inches='tight')
         plt.close(fig)
 
@@ -145,4 +270,5 @@ if __name__ == '__main__':
     grids['raw']    = ml_grid
 
     plot_grid(grids)
+    plot_grid_diff(grids)
     import ipdb; ipdb.set_trace()
