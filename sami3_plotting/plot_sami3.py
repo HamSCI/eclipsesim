@@ -14,6 +14,8 @@ import matplotlib as mpl
 #mpl.use('Agg')
 from matplotlib import pyplot as plt
 import numpy as np
+np.set_printoptions(suppress=True)
+
 import scipy.io
 
 import seqp
@@ -100,7 +102,7 @@ def plot_grid(grids,ref_point=None):
 
     inx = list(grids.keys())[0]
     ref_heights = grids[inx]['heights'][0,0,:]
-#    ref_heights = ref_heights[:1]
+    ref_heights = ref_heights[:1]
 
     marker_sz = 100
     for alt_inx,alt in enumerate(ref_heights):
@@ -268,5 +270,15 @@ if __name__ == '__main__':
     plot_grid(grids,ref_point=inxs)
 #    plot_grid_diff(grids)
 
-    alts    = ml_grid['heights'][0,0,:]
+    xi      = inxs[0]
+    yi      = inxs[1]
+    zi      = inxs[2]
+    hgts    = rg['heights'][xi,yi,:]
+    lats    = rg['lats'][:,yi,zi]
+    lons    = rg['lons'][xi,:,zi]
+
+#    lat_tf  = np.logical_and(lats >= ylim[0], lats < ylim[1])
+#    lon_tf  = np.logical_and(lons >= xlim[0], lons < xlim[1])
+#    tf      = np.logical_and(lat_tf,lon_tf)
+
     import ipdb; ipdb.set_trace()
