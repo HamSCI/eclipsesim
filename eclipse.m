@@ -40,8 +40,8 @@ function eclipse(job_id, make_plot, use_eclipse, ...
 
     SPEED_OF_LIGHT  = 2.99792458e8;
     ELEV_STEP       = 0.5;
-    NUM_HOPS        = 10;
-    ELEVS           = [5:ELEV_STEP:60];
+    NUM_HOPS        = 1;
+    ELEVS           = [3:ELEV_STEP:85];
     TX_POWER        = 1;
     GAIN_TX_DB      = 1;
     GAIN_RX_DB      = 1;
@@ -232,6 +232,7 @@ function eclipse(job_id, make_plot, use_eclipse, ...
             %%
             %% Plot Raytrace
             %%
+            save('session')
             if plottable ~= 0
                 plot_raytrace(tx_lat, tx_lon, azimuth, START_HEIGHT, ...
                               HEIGHT_INC, iono_pf_grid_2d, ...
@@ -250,8 +251,8 @@ function eclipse(job_id, make_plot, use_eclipse, ...
                                   '.png');
             plot_title = {strcat(ecl_title,' ',timestamp_str); ... 
                           strcat('TX: ',tx_call, ' Rx: ', rx_call,' ', num2str(freq), ' MHz')};
-            suptitle(plot_title);
-            print('-dpng', plot_fname);
+            %suptitle(plot_title);
+            print(plot_fname,'-dpng');
         end
                                           
         if srch_ray_good ~= 0

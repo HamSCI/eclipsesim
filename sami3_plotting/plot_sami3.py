@@ -30,7 +30,40 @@ def load_raw_grid():
     with bz2.BZ2File(grid_fl,'r') as fl:
         result = fl.readlines()
 
-    import ipdb; ipdb.set_trace()
+#    (17x100)x360 + 360 = 612360
+
+    for pinx,arr in enumerate([lats,lons]):
+        for yi in range(360):
+            for zi in range(100):
+                grp_start = (17*zi+1)+(yi*1700)+yi+pinx*612359-1
+                grp = result[grp_start:grp_start+17]
+
+                vals    = []
+                for ln in grp:
+                    vals += ln.split()
+                vals            = [float(x) for x in vals]
+                arr[:,yi,zi]    = vals
+                
+    # Adjust lons
+    tf  = lons > 180.
+    lons[tf] = lons[tf] - 360.
+
+    # Heights
+    grp_start   = 1224718
+    grp         = result[grp_start:grp_start+17]
+    vals        = []
+    for ln in grp:
+        vals += ln.split()
+    vals        = [float(x) for x in vals]
+    for xx in range(100):
+        for yy  in range(360):
+            heights[xx,yy,:]    = vals
+
+    grid    = {}
+    grid['heights'] = heights
+    grid['lats']    = lats
+    grid['lons']    = lons
+    return grid
 
 def load_ml_grid():
     ml_fl_grid  = 'sami3/grid.mat'
@@ -46,34 +79,36 @@ def plot_grid(grids):
     nx  = len(grids)
     ny  = 3
 
-    import ipdb; ipdb.set_trace()
+    inx = list(grids.keys())[0]
+    ref_heights = grids[inx]['heights']
+
     marker_sz = 100
-    for alt_inx,alt in enumerate(heights[0,0,:]):
+    for alt_inx,alt in enumerate(ref_heights[0,0,:]):
+        fig     = plt.figure(figsize=(15,10))
         for xinx,(src,grid) in enumerate(grids.items()):
             lats    = grid['lats']
             lons    = grid['lons']
             heights = grid['heights']
 
-            ax_inx  = 0 
-            fig     = plt.figure(figsize=(10,12))
-
-            ax_inx  += 1
+            ax_inx  = 1 + xinx
             ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
             ax.coastlines()
             xx      = lons[:,:,alt_inx]
             yy      = lats[:,:,alt_inx]
             pcoll   = ax.scatter(xx,yy,c=xx,vmin=-180,vmax=180,s=marker_sz,edgecolor='face',marker='s')
             cbar    = fig.colorbar(pcoll,label='Longitude')
+            ax.set_title(src)
 
-            ax_inx  += 1
+            ax_inx  = 3 + xinx
             ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
             ax.coastlines()
             xx      = lons[:,:,alt_inx]
             yy      = lats[:,:,alt_inx]
             pcoll   = ax.scatter(xx,yy,c=yy,vmin=-90,vmax=90,s=marker_sz,edgecolor='face',marker='s')
             cbar    = fig.colorbar(pcoll,label='Latitude')
+            ax.set_title(src)
 
-            ax_inx  += 1
+            ax_inx  = 5 + xinx
             ax      = fig.add_subplot(ny,nx,ax_inx,projection=ccrs.PlateCarree())
             ax.coastlines()
             xx      = lons[:,:,alt_inx]
@@ -81,15 +116,16 @@ def plot_grid(grids):
             zz      = heights[:,:,alt_inx]
             pcoll   = ax.scatter(xx,yy,c=zz,vmin=0,vmax=600,s=marker_sz,edgecolor='face',marker='s')
             cbar    = fig.colorbar(pcoll,label='Altitude [km]')
+            ax.set_title(src)
 
-            txt     = '{:.1f} km Altitude'.format(alt)
-            fig.text(0.5,1,txt,fontdict={'weight':'bold','size':'x-large'})
-            fig.tight_layout()
-            fname   = "{:03d}km_alt.png".format(int(alt))
-            fpath   = os.path.join(out_dir,fname)
-            fig.savefig(fpath,bbox_inches='tight')
-
-            plt.close(fig)
+        txt     = '{:.1f} km Altitude'.format(alt)
+        fig.text(0.5,1,txt,fontdict={'weight':'bold','size':'x-large'},ha='center')
+        fig.tight_layout()
+        fname   = "{:03d}km_alt.png".format(int(alt))
+        fpath   = os.path.join(out_dir,fname)
+        print(fpath)
+        fig.savefig(fpath,bbox_inches='tight')
+        plt.close(fig)
 
 #ml_fls_data = glob.glob(os.path.join('sami3','data_*.mat'))
 #lat =   40.
@@ -101,11 +137,12 @@ def plot_grid(grids):
 #keys = [x for x in range(160)]
 
 if __name__ == '__main__':
-    raw_grid    = load_raw_grid()
-    ml_grid     = load_ml_grid()
+    ml_grid         = load_ml_grid()
+    raw_grid        = load_raw_grid()
 
-    grids       = OrderedDict()
-    grids['ml'] = ml_grid
+    grids           = OrderedDict()
+    grids['ml']     = ml_grid
+    grids['raw']    = ml_grid
 
     plot_grid(grids)
     import ipdb; ipdb.set_trace()

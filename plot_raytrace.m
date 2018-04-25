@@ -36,7 +36,7 @@ function plot_raytrace(tx_lat, tx_lon, ray_bearing, start_height, height_inc, io
                '   lat = ' lat_str ', lon = ' lon_str ', bearing = ' ...
                bearing_str];
     start_range = 0;
-    end_range = 3000;
+    end_range = 2000;
     end_range_idx = fix(end_range ./ RANGE_INC) + 1;
     start_ht = start_height;
     start_ht_idx = 1;
@@ -53,16 +53,17 @@ function plot_raytrace(tx_lat, tx_lon, ray_bearing, start_height, height_inc, io
                             RANGE_INC, start_ht, end_ht, height_inc, ...
                             ray_path_data, srch_ray_path_data);
 
-    caxis([0, 7.25]);
-    
-    set(gcf, 'units', 'normal')
-    pos = get(gcf, 'position');
-    pos(2) = 0.55;
-    set(gcf, 'position', pos)
+%     caxis([0, 7.25]);
+%     
+%     set(gcf, 'units', 'normal')
+%     pos = get(gcf, 'position');
+%     pos(2) = 0.55;
+%     set(gcf, 'position', pos)
+% 
+%     % The following prints the figure to high-res encapsulated PS
+%     % and PNG files
+%     set(gcf, 'paperorientation', 'portrait')
+%     set(gcf, 'paperunits', 'cent', 'paperposition', [0 0 61 18])
+%     set(gcf, 'papertype', 'a4')
 
-    % The following prints the figure to high-res encapsulated PS
-    % and PNG files
-    set(gcf, 'paperorientation', 'portrait')
-    set(gcf, 'paperunits', 'cent', 'paperposition', [0 0 61 18])
-    set(gcf, 'papertype', 'a4')
 end

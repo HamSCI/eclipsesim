@@ -80,7 +80,7 @@ def create_job_files():
 
     return files
 
-def run_job(job):
+def run_job(job,eclipse_flags=[0,1]):
     with open(log_file,'a') as fl:
         line = "{}: {!s}\n".format(job,datetime.datetime.now())
         fl.write(line)
@@ -90,7 +90,7 @@ def run_job(job):
     if job_id < 0 or job_id > 159:
         return
 
-    for ECLIPSE in [0,1]:
+    for ECLIPSE in eclipse_flags:
         matlab_cmd = "eclipse({!s},{!s},{!s},'{!s}','{!s}','{!s}','{!s}'); exit;".format(
                         job_id, PLOTS, ECLIPSE, JOB_PATH, OUT_PATH, PLOT_PATH, SAMI3_PATH)
         cmd = 'matlab -nodisplay -r "{!s}"'.format(matlab_cmd)
