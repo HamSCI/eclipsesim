@@ -1,0 +1,3 @@
+[submodule "GPS-TEC-Parser"]
+	path = GPS-TEC-Parser
+	url = https://github.com/Jsvcycling/GPS-TEC-Parser.git
