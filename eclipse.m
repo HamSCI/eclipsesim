@@ -56,7 +56,7 @@ function eclipse(job_id, make_plot, use_eclipse, ...
     START_HEIGHT    = 0;
     HEIGHT_INC      = 3;
     NUM_HEIGHTS     = 200;
-    START_TIMESTAMP = datenum('21-Aug-2017 16:00:00');
+    START_TIMESTAMP = datenum('07-Oct-2018 00:00:00');
     
     if use_eclipse == 0
         ecl_str     = 'base';
@@ -71,30 +71,9 @@ function eclipse(job_id, make_plot, use_eclipse, ...
 
 
     % Get the timestamp of the current moment.
-    timestamp = addtodate(START_TIMESTAMP, (job_id * 3), 'minute');
+    timestamp = addtodate(START_TIMESTAMP, (job_id * 15), 'minute');
     UT = datevec(timestamp);
     UT = UT(1:5)
-
-    disp('Loading ionosphere...');
-
-    load(strcat(sami3_path, 'grid.mat'));
-    load(strcat(sami3_path, 'data_', num2str(job_id, '%04u'), '.mat'));
-
-    if use_eclipse ~= 0
-        interpolator = scatteredInterpolant(double(grid_lats(:)), ...
-                                            double(grid_lons(:)), ...
-                                            double(grid_heights(:)), ...
-                                            double(eclipse_data(:)), ...
-                                            'natural');
-    else
-        interpolator = scatteredInterpolant(double(grid_lats(:)), ...
-                                            double(grid_lons(:)), ...
-                                            double(grid_heights(:)), ...
-                                            double(base_data(:)), ...
-                                            'natural');
-    end
-
-    disp('Done.');
 
     irreg = zeros(4, NUM_RANGES);
 
