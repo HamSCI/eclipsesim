@@ -75,12 +75,10 @@ function eclipse(job_id, make_plot, use_eclipse, ...
     UT = datevec(timestamp);
     UT = UT(1:5)
 
-    irreg = zeros(4, NUM_RANGES);
-
     timestamp_str = datestr(timestamp, 'yyyy-mm-dd HH:MM:SS');
 
-    job_file        = fopen(strcat(job_path, timestamp_str, '.csv'), 'r');
-    out_file        = fopen(strcat(OUT_PATH, 'simulated_',ecl_str,'_', timestamp_str, '.csv'), 'w');
+    job_file  = fopen(strcat(job_path, timestamp_str, '.csv'), 'r');
+    out_file  = fopen(strcat(OUT_PATH, 'simulated_',ecl_str,'_', timestamp_str, '.csv'), 'w');
 
     % Write header
     fprintf(out_file, ['tx_call,' ...
@@ -138,16 +136,14 @@ function eclipse(job_id, make_plot, use_eclipse, ...
         [range, azimuth] = latlon2raz(rx_lat, rx_lon, tx_lat, tx_lon);
         range = range / 1000.;    % Convert from m to km
 
-        slice_params = [tx_lat tx_lon rx_lat rx_lon ...
-                        NUM_RANGES RANGE_INC ...
-                        START_HEIGHT HEIGHT_INC NUM_HEIGHTS];
+        [iono_pf_grid, iono_pf_grid_5, collision_freq, irreg, ~] = ...
+            gen_iono_grid_2d(tx_lat, tx_lon, R12, UT, azimuth, ...
+                             MAX_RANGE, NUM_RANGES, RANGE_INC, ...
+                             START_HEIGHT, HEIGHT_INC, NUM_HEIGHTS, ...
+                             KP, CALC_DOPPLER);
 
-        % Create a 2-D slice.
-        iono_en_grid_2d = create_2d_slice(interpolator, slice_params);
-        iono_pf_grid_2d = real((iono_en_grid_2d * 80.6164e-6) .^ 0.5);
-
-        slice_size        = size(iono_en_grid_2d);
-        collision_freq_2d = zeros(slice_size(1), NUM_RANGES);
+        % TODO: Load the GPS-TEC data and modify iono_pf_grid and
+        %       iono_pf_grid_5.
 
         freqs = freq .* ones(size(ELEVS));
 
