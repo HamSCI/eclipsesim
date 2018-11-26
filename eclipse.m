@@ -1,5 +1,5 @@
 function eclipse(job_id, make_plot, use_eclipse, ...
-                 job_path, out_path, plot_path, sami3_path)
+                 job_path, out_path, plot_path)
 %%----------------------------
 %%  Copyright (C) 2017 The Center for Solar-Terrestrial Research at
 %%                     the New Jersey Institute of Technology
