@@ -46,9 +46,12 @@ function [iono_en_grid] = create_2d_slice_tec(interpolator, params)
         [lat, lon] = raz2latlon(range_inc * (i - 1) * 1000, rx_azm, tx_lat, ...
                                 tx_lon);
         
-        % Use the GPS-TEC data to adjust the IRI model.
+        tec_val = interpolator({lat, lon, UT});
+        
+        % Use the GPS-TEC data to adjust the IRI model. See Krankowski,
+        % Shagimuratov, and Baran (2007) for k=1.61 value.
         iri_opts = {}
-        iri_opts.foF2 = interpolator({lat, lon, UT});
+        iri_opts.foF2 = 1.61 * (tec_val .^ 0.5);
         
         % Get the IRI2016 result for the selected location and timestamp.
         [iri_data, iri_extra] = iri2016(lat, lon, R12, UT, height_start ...
