@@ -71,6 +71,8 @@ function eclipse(job_id, make_plot, job_path, out_path, plot_path, tec_file)
                                                 ones(1, lenght(tec))*0), ...
                                         double(tec.tec(:)), ...
                                         'natural');
+    
+    disp('Done.');
 
     % Get the timestamp of the current moment.
     timestamp = addtodate(START_TIMESTAMP, (job_id * 15), 'minute');
@@ -137,15 +139,17 @@ function eclipse(job_id, make_plot, job_path, out_path, plot_path, tec_file)
         % Calculate azimuth and range.
         [range, azimuth] = latlon2raz(rx_lat, rx_lon, tx_lat, tx_lon);
         range = range / 1000.;    % Convert from m to km
-
-        [iono_pf_grid, iono_pf_grid_5, collision_freq, irreg, ~] = ...
-            gen_iono_grid_2d(tx_lat, tx_lon, R12, UT, azimuth, ...
-                             MAX_RANGE, NUM_RANGES, RANGE_INC, ...
-                             START_HEIGHT, HEIGHT_INC, NUM_HEIGHTS, ...
-                             KP, CALC_DOPPLER);
-
-        % TODO: Load the GPS-TEC data and modify iono_pf_grid and
-        %       iono_pf_grid_5.
+        
+        slice_params = [tx_lat tx_lon rx_lat rx_lon ...
+                        NUM_RANGES RANGE_INC ...
+                        START_HEIGHT HEIGHT_INC NUM_HEIGHTS ...
+                        UT];
+        
+        iono_en_grid_2d = create_2d_slice_tec(interpolator, slice_params);
+        iono_pf_grid_2d = real((iono_en_grid_2d * 80.6164e-6) .^ 0.5);
+        
+        slice_size        = size(iono_en_grid_2d);
+        collision_freq_2d = zeros(slice_size(1), NUM_RANGES);
 
         freqs = freq .* ones(size(ELEVS));
 
